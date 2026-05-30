@@ -59,3 +59,4 @@ temp/
 data/find_identity_span_audit.csv
 status_mi_runpod_figures_latest/
 output_data/**
+pod_results/**
