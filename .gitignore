@@ -32,6 +32,12 @@ data/bbq/*
 !data/bbq/data/
 !data/bbq/data/*.jsonl
 !data/bbq/few_shot_pool.json
+!data/bbq/results/
+data/bbq/results/*
+!data/bbq/results/race_smoke_test/
+data/bbq/results/race_smoke_test/*
+!data/bbq/results/race_smoke_test/patching_pairs/
+!data/bbq/results/race_smoke_test/patching_pairs/*.csv
 data/bbq/.git/
 status_mi_runpod_results/
 status_mi_runpod_diagnostics_fast/

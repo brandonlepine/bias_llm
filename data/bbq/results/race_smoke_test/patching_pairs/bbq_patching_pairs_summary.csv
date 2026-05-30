@@ -1,0 +1,10 @@
+metric,value
+total_candidates,1238
+pairs_created,1032
+pairs_dropped,206
+pairs_with_same_identity_groups,1032
+pairs_with_different_identity_groups,0
+pairs_with_same_signature,0
+pairs_with_different_signature,1032
+pairs_with_same_position_signature,0
+pairs_with_different_position_signature,1032
