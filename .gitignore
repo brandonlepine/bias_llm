@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# Large local artifacts
+models/
+results/
+data/bbq/*
+!data/bbq/data/
+!data/bbq/data/*.jsonl
+!data/bbq/few_shot_pool.json
+data/bbq/.git/
+status_mi_runpod_results/
+status_mi_runpod_diagnostics_fast/
+status_mi_runpod_diagnostics_fast_figures/
+status_mi_runpod_figures_latest/
+checkpoints/
+wandb/
+runs/
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# Keep source data and generated prompt CSVs trackable unless explicitly ignored later.
+!data/mi_identity_prompts.csv
+
+# Per-row audit artifact from scripts/audit_identity_spans.py; regeneratable.
+data/find_identity_span_audit.csv
+status_mi_runpod_figures_latest/
+output_data/**

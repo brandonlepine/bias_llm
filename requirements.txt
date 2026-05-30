@@ -1,0 +1,14 @@
+pandas
+numpy
+tqdm
+torch
+transformers==4.44.2
+accelerate==0.33.0
+tokenizers==0.19.1
+huggingface_hub
+safetensors
+scikit-learn
+matplotlib
+seaborn
+pyarrow
+fastparquet
