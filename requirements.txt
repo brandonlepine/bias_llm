@@ -12,3 +12,4 @@ matplotlib
 seaborn
 pyarrow
 fastparquet
+transformer_lens

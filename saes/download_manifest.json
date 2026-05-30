@@ -1,0 +1,38 @@
+{
+  "repo_id": "OpenMOSS-Team/Llama3_1-8B-Base-LXR-32x",
+  "revision_requested": null,
+  "revision_resolved": "336730e758fed3cb2273276703d836aa8659d293",
+  "width": 32,
+  "layers_requested": [
+    24
+  ],
+  "downloaded_at": "2026-05-30T19:42:00.984076+00:00",
+  "dry_run": false,
+  "layers": {
+    "24": [
+      {
+        "repo_path": "Llama3_1-8B-Base-L24R-32x/checkpoints/final.safetensors",
+        "layer_score": 21,
+        "parsed_position": "R",
+        "parsed_width": 32,
+        "local_path": "Llama3_1-8B-Base-L24R-32x/checkpoints/final.safetensors"
+      },
+      {
+        "repo_path": "Llama3_1-8B-Base-L24R-32x/hyperparams.json",
+        "layer_score": 18,
+        "parsed_position": "R",
+        "parsed_width": 32,
+        "local_path": "Llama3_1-8B-Base-L24R-32x/hyperparams.json"
+      },
+      {
+        "repo_path": "Llama3_1-8B-Base-L24R-32x/lm_config.json",
+        "layer_score": 18,
+        "parsed_position": "R",
+        "parsed_width": 32,
+        "local_path": "Llama3_1-8B-Base-L24R-32x/lm_config.json"
+      }
+    ]
+  },
+  "resolved_position": "R",
+  "resolved_width": 32
+}

@@ -1,0 +1,10 @@
+{
+    "device": "cuda",
+    "seed": 42,
+    "dtype": "torch.bfloat16",
+    "model_name": "meta-llama/Llama-3.1-8B",
+    "use_flash_attn": false,
+    "cache_dir": null,
+    "d_model": 4096,
+    "local_files_only": false
+}

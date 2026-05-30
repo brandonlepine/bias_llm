@@ -43,7 +43,7 @@ DEFAULT_WIDTH = 32
 WEIGHT_SUFFIXES = (".safetensors", ".pt", ".pth", ".bin", ".ckpt")
 CONFIG_SUFFIXES = (".json", ".yaml", ".yml", ".txt", ".md")
 RESIDUAL_MARKERS = ("resid", "residual", "res_stream", "res-stream", "lxr", "blocks")
-REQUIRED_PER_LAYER = ("hyperparameters.json",)
+REQUIRED_PER_LAYER = ("hyperparams.json",)
 
 
 def parse_args() -> argparse.Namespace:
