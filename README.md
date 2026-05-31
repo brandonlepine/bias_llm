@@ -15,9 +15,17 @@ These scripts default to RunPod-oriented output paths.
 This repository currently uses a 4-step BBQ workflow for residual-stream patching:
 
 1. Score BBQ rows with TransformerLens logits  
-   Script: `scripts/identify_biased_bbq_items.py`
+   Script: `scripts/identify_biased_bbq_items.py`  
+   Works across all single-identity BBQ categories (Race_ethnicity, Gender_identity,
+   Physical_appearance, Disability_status, Religion, SES, Sexual_orientation) — target
+   matching resolves 100% of ambiguous items in each. Pass `--bbq_path` for the split
+   and `--out_prefix` to name outputs (defaults to `<file_stem>_bbq`, e.g.
+   `gender_identity_bbq`). The race smoke-test artifacts use prefix `race_bbq`.
 2. Select high-signal candidates  
-   Script: `scripts/select_bbq_patching_candidates.py`
+   Script: `scripts/select_bbq_patching_candidates.py`  
+   Output names follow `--out_prefix`, which defaults to the `--scored_csv` stem with
+   `_scored_examples_tl` stripped — so it auto-matches the prefix from step 1 (e.g.
+   `gender_identity_bbq`) and the steps chain without extra flags.
 3. Build **token-aligned minimal-swap** clean/corrupt counterfactual pairs  
    Script: `scripts/build_bbq_patching_pairs.py`
 4. Run `resid_pre[layer, token_position]` activation patching  
@@ -93,8 +101,19 @@ leading space). The builder requires `len(tok(" " + a)) == len(tok(" " + b))`, t
 re-tokenizes both full prompts and verifies (a) equal length and (b) every
 differing position decodes to an identity token. Pairs failing either check are
 dropped and counted in the summary (`dropped_surface_token_len_mismatch`, etc.).
-On the race candidate set this yields ~25% of candidates (315 pairs), with every
-surviving pair verified to differ only at identity tokens.
+
+**Reference-distractor filter (`--distractor_mode reference`, default).** Each BBQ
+instance pairs *two* identities. If both are marked/stereotyped groups (e.g.
+Black↔Asian), `bias_effect` is a contrast between two stereotypes, not
+stereotype-vs-neutral — confounded. So by default the builder keeps only pairs whose
+**distractor is the dominant/unmarked reference group** for the category, defined by
+an explicit per-category set `DOMINANT_REFERENCE_GROUPS` (race: White/Caucasian/
+European; gender: man/male/cisgender; disability: nonDisabled; SES: highSES; physical:
+nonObese/notPregnant/tall/…; religion: Christian/Protestant/Catholic; sexual
+orientation: straight). Use `--distractor_mode all` to keep every aligned pair. Each
+pair records `target_identity`/`target_identity_group`, `distractor_identity`/
+`distractor_identity_group`, and `distractor_is_reference`. Clean-pair counts: race
+108, gender 703, SES 522, disability 179, physical 173, religion 70, sexual_orientation 56.
 
 ## Residual Patching: What Is Actually Being Patched
 
@@ -177,33 +196,32 @@ Inputs:
 
 Outputs:
 
-- Raw per-site results:
-  - `bbq_resid_pre_bias_effect_raw.csv`
-- Aggregate heatmaps (by raw token position):
-  - `bbq_resid_pre_bias_effect_heatmap_all.csv`
-  - `bbq_resid_pre_bias_effect_heatmap_neg.csv`
-  - `bbq_resid_pre_bias_effect_heatmap_nonneg.csv`
-  - plus matching `.png`
-  - NOTE: raw token position only aligns across pairs for the fixed instruction
-    prefix and the final answer token; for content positions, use the span
-    aggregation below.
-- Span-aggregated heatmaps (cross-pair valid):
-  - `bbq_resid_pre_bias_effect_span_heatmap_all.csv` (+ `neg` / `nonneg`)
-  - plus matching `.png` — `layer × {instruction, context, question, option_A,
-    option_B, option_C, answer}`
-  - `bbq_resid_pre_bias_effect_by_span_identity.csv` — same, split by
-    `is_identity_token` (1 = a swapped identity token, 0 = a shared token), the
-    most direct bias-localization readout
-- Token-labeled plots:
-  - `bbq_resid_pre_bias_effect_token_labeled_heatmap_all.png`
-  - `bbq_resid_pre_bias_effect_token_labeled_heatmap_neg.png`
-  - `bbq_resid_pre_bias_effect_token_labeled_heatmap_nonneg.png`
-- Top-position focused plots:
-  - `bbq_resid_pre_top_positions_all.png`
-  - `bbq_resid_pre_top_positions_neg.png`
-  - `bbq_resid_pre_top_positions_nonneg.png`
-- Per-pair diagnostics:
-  - `per_pair_bias_effect/pair_<pair_id>_clean_<clean_example_id>_corrupt_<corrupt_example_id>.png`
+- Raw per-site results (source of truth, one row per pair×layer×position):
+  - `bbq_resid_pre_bias_effect_raw.csv` — includes `span` and `is_identity_token`
+- **Canonical cross-pair aggregate — by semantic span** (`layer × {instruction,
+  context, question, option_A, option_B, option_C, answer}`):
+  - `bbq_resid_pre_bias_effect_span_heatmap_{all,neg,nonneg}.{csv,png}`
+- **Span × identity** (two panels: swapped-identity tokens vs shared scaffold tokens):
+  - `bbq_resid_pre_bias_effect_span_identity_{all,neg,nonneg}.png`
+  - `bbq_resid_pre_bias_effect_by_span_identity.csv`
+  - This is the most direct localization view: where the swapped identity tokens
+    inject the effect vs where it propagates into shared tokens.
+- Per-pair token-labeled heatmaps (valid: positions align within a single pair):
+  - `per_pair_bias_effect/pair_<pair_id>_clean_<id>_corrupt_<id>.png`
+  - Dead leading columns (everything before the first swapped identity token, which
+    is exactly 0 by construction) are trimmed; swapped identity tokens are red.
+  - **Both** swapped identities are outlined so it's never ambiguous which tokens are
+    which: the stereotyped **target** (green; from `target_letters`, polarity-independent)
+    and the **distractor** it is swapped against (orange), each in the context and as
+    its answer option, with the group names in the legend. The title shows the metric
+    `readout` slots and the `target` slot (they coincide for `neg`, differ for `nonneg`).
+- Diagnostics:
+  - `bbq_resid_pre_bias_effect_token_position_label_diagnostics.csv`
+
+Why there is **no** raw-token-position aggregate heatmap: averaging `bias_effect`
+by integer position across pairs is invalid because pairs have different content at
+each index (only the fixed instruction prefix and the final answer token align).
+That aggregation mislabels and mixes tokens, so the span aggregates above replace it.
 
 ## Example Commands
 
@@ -214,7 +232,8 @@ python scripts/build_bbq_patching_pairs.py \
   --candidates_csv data/bbq/results/race_smoke_test/patching_candidates/race_bbq_patching_candidates_all.csv \
   --out_dir data/bbq/results/race_smoke_test/patching_pairs \
   --bbq_jsonl data/bbq/data/Race_ethnicity.jsonl \
-  --model_path meta-llama/Llama-3.1-8B
+  --model_path meta-llama/Llama-3.1-8B \
+  --distractor_mode reference
 ```
 
 The `--model_path` tokenizer must match the patching model so the alignment gate is exact.

@@ -24,9 +24,25 @@ def main() -> None:
     )
     parser.add_argument("--min_biased_vs_unknown", type=float, default=0.0)
     parser.add_argument("--top_k_per_polarity", type=int, default=None)
+    parser.add_argument(
+        "--out_prefix",
+        type=str,
+        default=None,
+        help=(
+            "Filename prefix for outputs (e.g. 'gender_identity_bbq'). Defaults to the "
+            "scored_csv stem with a trailing '_scored_examples_tl' removed "
+            "(e.g. gender_identity_bbq_scored_examples_tl.csv -> 'gender_identity_bbq')."
+        ),
+    )
     args = parser.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
+
+    out_prefix = args.out_prefix
+    if out_prefix is None:
+        stem = args.scored_csv.stem
+        suffix = "_scored_examples_tl"
+        out_prefix = stem[: -len(suffix)] if stem.endswith(suffix) else stem
 
     df = pd.read_csv(args.scored_csv)
 
@@ -75,10 +91,10 @@ def main() -> None:
     neg = candidates[candidates["question_polarity"] == "neg"].copy()
     nonneg = candidates[candidates["question_polarity"] == "nonneg"].copy()
 
-    all_path = args.out_dir / "race_bbq_patching_candidates_all.csv"
-    neg_path = args.out_dir / "race_bbq_patching_candidates_neg.csv"
-    nonneg_path = args.out_dir / "race_bbq_patching_candidates_nonneg.csv"
-    summary_path = args.out_dir / "race_bbq_patching_candidates_summary.csv"
+    all_path = args.out_dir / f"{out_prefix}_patching_candidates_all.csv"
+    neg_path = args.out_dir / f"{out_prefix}_patching_candidates_neg.csv"
+    nonneg_path = args.out_dir / f"{out_prefix}_patching_candidates_nonneg.csv"
+    summary_path = args.out_dir / f"{out_prefix}_patching_candidates_summary.csv"
 
     candidates.to_csv(all_path, index=False)
     neg.to_csv(neg_path, index=False)

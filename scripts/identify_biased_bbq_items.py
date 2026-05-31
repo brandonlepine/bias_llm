@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,13 @@ GROUP_ALIASES = {
     "arab": {"middle eastern", "arab", "arabic", "f-arab", "m-arab"},
     "white": {"white", "caucasian", "f-white", "m-white"},
     "caucasian": {"white", "caucasian", "f-white", "m-white"},
+    # Gender_identity: category templates label answers man/woman/boy/girl while
+    # stereotyped_groups uses F/M; the transgender subcategory uses trans_m/trans_f.
+    "f": {"f", "female", "woman", "women", "girl", "girls", "lady"},
+    "m": {"m", "male", "man", "men", "boy", "boys"},
+    "trans": {"trans", "transgender", "transgender men", "transgender women", "trans_m", "trans_f"},
+    "transgender men": {"trans", "transgender", "transgender men", "transgender women", "trans_m", "trans_f"},
+    "transgender women": {"trans", "transgender", "transgender men", "transgender women", "trans_m", "trans_f"},
 }
 
 
@@ -56,12 +64,21 @@ def normalize(s: str) -> str:
     return s.lower().strip()
 
 
+def canonicalize_group(value: str) -> str:
+    """Strip non-alphanumerics so orthographic label variants match.
+
+    e.g. SES stereotyped_groups use 'low SES' while answer_info uses 'lowSES';
+    canonicalizing both to 'lowses' lets them intersect.
+    """
+    return re.sub(r"[^a-z0-9]", "", value.lower().strip())
+
+
 def expand_group_aliases(groups: set[str]) -> set[str]:
     expanded = set()
     for group in groups:
         expanded.add(group)
         expanded.update(GROUP_ALIASES.get(group, {group}))
-    return expanded
+    return {canonicalize_group(g) for g in expanded}
 
 
 def answer_letter_for_index(idx: int) -> str:
@@ -314,6 +331,15 @@ def main() -> None:
     )
     parser.add_argument("--bbq_path", type=Path, required=True)
     parser.add_argument("--out_dir", type=Path, required=True)
+    parser.add_argument(
+        "--out_prefix",
+        type=str,
+        default=None,
+        help=(
+            "Filename prefix for outputs (e.g. 'gender_identity_bbq'). "
+            "Defaults to '<bbq_file_stem_lowercased>_bbq' (e.g. Race_ethnicity.jsonl -> 'race_ethnicity_bbq')."
+        ),
+    )
 
     parser.add_argument("--max_examples", type=int, default=None)
     parser.add_argument(
@@ -416,9 +442,10 @@ def main() -> None:
 
     df = pd.DataFrame(scored)
 
-    full_path = args.out_dir / "race_bbq_scored_examples_tl.csv"
-    ranked_path = args.out_dir / "race_bbq_most_biased_ranked_tl.csv"
-    summary_path = args.out_dir / "race_bbq_summary_by_polarity_tl.csv"
+    out_prefix = args.out_prefix or f"{args.bbq_path.stem.lower()}_bbq"
+    full_path = args.out_dir / f"{out_prefix}_scored_examples_tl.csv"
+    ranked_path = args.out_dir / f"{out_prefix}_most_biased_ranked_tl.csv"
+    summary_path = args.out_dir / f"{out_prefix}_summary_by_polarity_tl.csv"
 
     df.to_csv(full_path, index=False)
 
@@ -456,7 +483,7 @@ def main() -> None:
             na_position="last",
         )
         sub_ranked.to_csv(
-            args.out_dir / f"race_bbq_top_biased_{polarity}_tl.csv",
+            args.out_dir / f"{out_prefix}_top_biased_{polarity}_tl.csv",
             index=False,
         )
 

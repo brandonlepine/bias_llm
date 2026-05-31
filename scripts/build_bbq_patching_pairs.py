@@ -164,10 +164,30 @@ def verify_alignment(
     return True, len(diff_positions)
 
 
+def canonicalize_group(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(value).lower().strip())
+
+
+# Strictly the dominant / unmarked reference group(s) per BBQ category (canonicalized
+# answer_info group labels). A pair is a clean "stereotyped target vs neutral" contrast
+# only when its distractor is one of these. Keyed by category.lower().
+DOMINANT_REFERENCE_GROUPS: dict[str, set[str]] = {
+    "race_ethnicity": {"white", "caucasian", "european", "fwhite", "mwhite"},
+    "gender_identity": {"m", "man", "men", "boy", "nontrans", "nontransm", "nontransf"},
+    "disability_status": {"nondisabled"},
+    "religion": {"christian", "protestant", "catholic"},
+    "ses": {"highses"},
+    "sexual_orientation": {"straight"},
+    "physical_appearance": {"nonobese", "posdress", "notpregnant", "novisibledifference", "tall"},
+}
+
+
 def build_pair_row(
     clean: pd.Series,
     answer_info: dict[str, list[str]],
     tokenizer,
+    reference_groups: set[str],
+    distractor_mode: str,
 ) -> tuple[dict[str, Any] | None, str]:
     """Return (pair_row, status). status == 'ok' when a pair was produced, else a
     drop reason for diagnostics."""
@@ -207,7 +227,22 @@ def build_pair_row(
     if space_token_len(tokenizer, v1) != space_token_len(tokenizer, v2):
         return None, "surface_token_len_mismatch"
 
-    # Identity that sits in the biased slot of the CLEAN prompt (the stereotyped one).
+    # Stereotyped TARGET (from BBQ stereotyped_groups, polarity-independent) and the
+    # DISTRACTOR it is swapped against. The distractor is a clean 'reference' only if
+    # its group is never itself a stereotyped target in this category.
+    target_letter = first_letter(clean.get("target_letters", ""))
+    if target_letter not in named_letters:
+        return None, "target_letter_not_named"
+    distractor_letter = (named_letters - {target_letter}).pop()
+    target_identity = surfaces[target_letter]
+    target_group = groups[target_letter]
+    distractor_identity = surfaces[distractor_letter]
+    distractor_group = groups[distractor_letter]
+    distractor_is_reference = canonicalize_group(distractor_group) in reference_groups
+    if distractor_mode == "reference" and not distractor_is_reference:
+        return None, "distractor_not_reference"
+
+    # Identity that sits in the biased (metric-readout) slot of the CLEAN prompt.
     biased_identity = surfaces[biased_letter]
     biased_group = groups[biased_letter]
     other_letter = (named_letters - {biased_letter}).pop()
@@ -260,7 +295,15 @@ def build_pair_row(
         "corrupt_unknown_letter": unknown_letter,
         "clean_target_letters": clean.get("target_letters"),
         "corrupt_target_letters": clean.get("target_letters"),
-        # Identity metadata.
+        # Stereotyped target vs distractor (the actual identity contrast being swapped).
+        "target_letter": target_letter,
+        "target_identity": target_identity,
+        "target_identity_group": target_group,
+        "distractor_letter": distractor_letter,
+        "distractor_identity": distractor_identity,
+        "distractor_identity_group": distractor_group,
+        "distractor_is_reference": distractor_is_reference,
+        # Identity metadata (biased = metric-readout slot; flips to non-target on nonneg).
         "biased_identity": biased_identity,
         "biased_identity_group": biased_group,
         "other_identity": other_identity,
@@ -285,6 +328,13 @@ def main() -> None:
     )
     parser.add_argument("--candidates_csv", type=Path, required=True)
     parser.add_argument("--out_dir", type=Path, required=True)
+    parser.add_argument(
+        "--distractor_mode",
+        choices=["reference", "all"],
+        default="reference",
+        help="reference: keep only pairs whose distractor is the dominant/unmarked reference "
+        "group for the category (clean target-vs-neutral contrast). all: keep every aligned pair.",
+    )
     parser.add_argument(
         "--bbq_jsonl",
         type=Path,
@@ -331,11 +381,23 @@ def main() -> None:
 
     answer_info_map = load_answer_info_map(args.bbq_jsonl)
 
+    category_key = str(candidates["category"].iloc[0]).strip().lower() if len(candidates) else ""
+    reference_groups = DOMINANT_REFERENCE_GROUPS.get(category_key, set())
+    if args.distractor_mode == "reference" and not reference_groups:
+        raise ValueError(
+            f"No dominant-reference group set defined for category {category_key!r}. "
+            f"Add it to DOMINANT_REFERENCE_GROUPS, or pass --distractor_mode all."
+        )
+    print(f"Distractor mode: {args.distractor_mode}")
+    print(f"Category: {category_key} | dominant reference groups: {sorted(reference_groups)}")
+
     pairs: list[dict[str, Any]] = []
     drop_reasons: dict[str, int] = {}
     for _, clean in candidates.iterrows():
         answer_info = answer_info_map.get(int(clean["example_id"]), {})
-        row, status = build_pair_row(clean, answer_info, tokenizer)
+        row, status = build_pair_row(
+            clean, answer_info, tokenizer, reference_groups, args.distractor_mode
+        )
         if row is None:
             drop_reasons[status] = drop_reasons.get(status, 0) + 1
             continue
@@ -392,16 +454,26 @@ def main() -> None:
             print(f"  {polarity}: {int(count)}")
         print(f"\nmean differing tokens per pair: {pairs_df['n_diff_tokens'].mean():.2f}")
 
+        print("\nTarget (stereotyped) vs distractor group, top combos:")
+        combo = (
+            pairs_df.groupby(["target_identity_group", "distractor_identity_group"])
+            .size()
+            .sort_values(ascending=False)
+            .head(12)
+        )
+        for (t, d), c in combo.items():
+            print(f"  {t} (target) vs {d} (distractor): {int(c)}")
+
         n = min(args.sample_pairs_n, len(pairs_df))
         sampled = pairs_df.sample(n=n, random_state=42)
         show_cols = [
             "clean_example_id",
             "question_polarity",
+            "target_identity_group",
+            "distractor_identity_group",
+            "distractor_is_reference",
             "swap_identities",
-            "clean_biased_letters",
-            "clean_unknown_letters",
             "n_diff_tokens",
-            "prompt_token_len",
         ]
         print(f"\nSample pairs ({n}):")
         print(sampled[show_cols].to_string(index=False))

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import pandas as pd
 import torch
 from tqdm import tqdm
@@ -241,24 +242,6 @@ def compute_prompt_metrics_batch(
     return metrics
 
 
-def aggregate_from_raw(raw_df: pd.DataFrame, value_col: str) -> pd.DataFrame:
-    return (
-        raw_df.groupby(["layer", "token_position"], as_index=False)[value_col]
-        .mean()
-        .rename(columns={value_col: "value"})
-        .sort_values(["layer", "token_position"])
-        .reset_index(drop=True)
-    )
-
-
-def save_aggregate_heatmap_csv(df: pd.DataFrame, out_path: Path, value_col: str) -> pd.DataFrame:
-    mean_col = f"mean_{value_col}"
-    out = df.rename(columns={"value": mean_col}).copy()
-    out = out[["layer", "token_position", mean_col]]
-    out.to_csv(out_path, index=False)
-    return out
-
-
 def assign_spans(tokenizer, prompt: str) -> list[str]:
     """Map each token of `prompt` to a semantic span in SPAN_ORDER using char offsets.
 
@@ -355,13 +338,62 @@ def plot_span_heatmap(agg_df: pd.DataFrame, png_path: Path, title: str, colorbar
     plt.close(fig)
 
 
+def plot_span_identity_heatmap(
+    sub_df: pd.DataFrame, value_col: str, png_path: Path, title: str, colorbar_label: str
+) -> None:
+    """Two panels (swapped-identity tokens vs shared scaffold tokens), layer x span,
+    on a shared color scale. Shows whether effect is carried by the identity tokens
+    themselves or by propagation into the shared tokens."""
+    df = sub_df.copy()
+    df["span"] = pd.Categorical(df["span"], categories=SPAN_ORDER, ordered=True)
+    g = (
+        df.groupby(["layer", "span", "is_identity_token"], observed=True)[value_col]
+        .mean()
+        .reset_index()
+    )
+    if g.empty:
+        return
+    layers = sorted(int(x) for x in df["layer"].unique())
+    vmax = robust_symmetric_vlim(g[value_col])
+
+    fig, axes = plt.subplots(1, 2, figsize=(2 * max(5, len(SPAN_ORDER) * 0.9), 8), sharey=True)
+    im = None
+    for ax, flag, panel in [(axes[0], 1, "swapped identity tokens"), (axes[1], 0, "shared scaffold tokens")]:
+        panel_df = g[g["is_identity_token"] == flag]
+        present = [s for s in SPAN_ORDER if s in set(panel_df["span"].astype(str))]
+        pivot = (
+            panel_df.assign(span=panel_df["span"].astype(str))
+            .pivot(index="layer", columns="span", values=value_col)
+            .reindex(index=layers, columns=present)
+        )
+        im = ax.imshow(
+            pivot.values, aspect="auto", origin="lower", cmap="coolwarm",
+            vmin=-vmax, vmax=vmax, interpolation="nearest",
+        )
+        ax.set_title(panel)
+        ax.set_xlabel("Prompt span")
+        ax.set_xticks(range(len(present)))
+        ax.set_xticklabels(present, rotation=45, ha="right")
+    axes[0].set_ylabel("Layer")
+    axes[0].set_yticks(range(len(layers)))
+    axes[0].set_yticklabels([str(y) for y in layers])
+    fig.suptitle(title)
+    cbar = fig.colorbar(im, ax=axes, fraction=0.046, pad=0.02)
+    cbar.set_label(colorbar_label)
+    fig.savefig(png_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
 def write_span_outputs(raw_df: pd.DataFrame, out_dir: Path, value_col: str) -> list[Path]:
-    """Cross-pair-valid aggregation by semantic span (and identity-token flag)."""
+    """Canonical cross-pair-valid aggregation: by semantic span, and by whether each
+    position is a swapped identity token. Raw token-position aggregation across pairs is
+    intentionally not produced (positions don't align across variable-length prompts)."""
     if "span" not in raw_df.columns:
         print("  [span] raw CSV has no 'span' column; skipping span aggregation (rerun patching to add it).")
         return []
 
     colorbar = "Mean Bias Effect" if value_col == "bias_effect" else f"Mean {value_col}"
+    has_identity = "is_identity_token" in raw_df.columns
     paths: list[Path] = []
     splits = [
         ("all", raw_df),
@@ -376,8 +408,15 @@ def write_span_outputs(raw_df: pd.DataFrame, out_dir: Path, value_col: str) -> l
         plot_span_heatmap(agg, png_path, f"BBQ resid_pre by span ({suffix})", colorbar)
         paths.extend([csv_path, png_path])
 
-    # Identity-resolved view: separate the swapped identity tokens from shared tokens.
-    if "is_identity_token" in raw_df.columns:
+        if has_identity and not sub.empty:
+            id_png = out_dir / f"bbq_resid_pre_bias_effect_span_identity_{suffix}.png"
+            plot_span_identity_heatmap(
+                sub, value_col, id_png, f"BBQ resid_pre by span x identity ({suffix})", colorbar
+            )
+            paths.append(id_png)
+
+    # Identity-resolved table (all polarities) backing the span x identity plots.
+    if has_identity:
         df = raw_df.copy()
         df["span"] = pd.Categorical(df["span"], categories=SPAN_ORDER, ordered=True)
         ident = (
@@ -391,44 +430,6 @@ def write_span_outputs(raw_df: pd.DataFrame, out_dir: Path, value_col: str) -> l
         ident.to_csv(ident_path, index=False)
         paths.append(ident_path)
     return paths
-
-
-def plot_numeric_heatmap(df: pd.DataFrame, png_path: Path, title: str, colorbar_label: str) -> None:
-    if df.empty:
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.set_title(f"{title} (no data)")
-        ax.set_xlabel("Token Position")
-        ax.set_ylabel("Layer")
-        fig.tight_layout()
-        fig.savefig(png_path, dpi=150)
-        plt.close(fig)
-        return
-
-    pivot = df.pivot(index="layer", columns="token_position", values="value").sort_index(axis=0).sort_index(axis=1)
-    vmax = robust_symmetric_vlim(df["value"])
-
-    fig, ax = plt.subplots(figsize=(12, 8))
-    im = ax.imshow(
-        pivot.values,
-        aspect="auto",
-        interpolation="nearest",
-        origin="lower",
-        cmap="coolwarm",
-        vmin=-vmax,
-        vmax=vmax,
-    )
-    ax.set_title(title)
-    ax.set_xlabel("Token Position")
-    ax.set_ylabel("Layer")
-    ax.set_xticks(range(len(pivot.columns)))
-    ax.set_xticklabels([str(int(x)) for x in pivot.columns], rotation=90)
-    ax.set_yticks(range(len(pivot.index)))
-    ax.set_yticklabels([str(int(y)) for y in pivot.index])
-    cbar = fig.colorbar(im, ax=ax)
-    cbar.set_label(colorbar_label)
-    fig.tight_layout()
-    fig.savefig(png_path, dpi=150)
-    plt.close(fig)
 
 
 def build_token_label_table(pairs: pd.DataFrame, raw_df: pd.DataFrame, tokenizer) -> pd.DataFrame:
@@ -481,15 +482,16 @@ def build_label_diagnostics(token_labels: pd.DataFrame, out_path: Path) -> pd.Da
     return diag
 
 
-def representative_labels(token_labels: pd.DataFrame) -> dict[int, str]:
-    if token_labels.empty:
-        return {}
-    reps = (
-        token_labels.groupby("token_position")["clean_token_text"]
-        .agg(lambda s: s.value_counts().index[0])
-        .to_dict()
-    )
-    return {int(k): normalize_token_label(str(v)) for k, v in reps.items()}
+def nonzero_positions(agg_df: pd.DataFrame, value_col: str) -> set[int]:
+    """Positions with any non-zero effect across layers.
+
+    In a token-aligned minimal-swap pair, every token before the first swapped
+    identity token is identical in clean and corrupt, so patching there is exactly
+    0 across all layers. Those structurally-dead columns (the instruction prefix and
+    leading context) carry no information and are dropped from the labeled plots.
+    """
+    per_pos = agg_df.groupby("token_position")[value_col].apply(lambda s: float(s.abs().max()))
+    return {int(pos) for pos, vmax in per_pos.items() if vmax > 0.0}
 
 
 def plot_token_labeled_heatmap(
@@ -501,6 +503,8 @@ def plot_token_labeled_heatmap(
     colorbar_label: str,
     max_label_chars: int,
     top_positions: list[int] | None = None,
+    identity_positions: set[int] | None = None,
+    boxes: list[tuple[list[int], str, str]] | None = None,
 ) -> None:
     if agg_df.empty:
         fig, ax = plt.subplots(figsize=(6, 4))
@@ -523,7 +527,7 @@ def plot_token_labeled_heatmap(
     flat_vals = pd.Series(pivot.values.ravel())
     vmax = robust_symmetric_vlim(flat_vals)
 
-    fig, ax = plt.subplots(figsize=(max(10, pivot.shape[1] * 0.35), 8))
+    fig, ax = plt.subplots(figsize=(max(8, pivot.shape[1] * 0.32), 8))
     im = ax.imshow(
         pivot.values,
         aspect="auto",
@@ -535,7 +539,8 @@ def plot_token_labeled_heatmap(
     )
     ax.set_title(title)
     ax.set_ylabel("Layer")
-    ax.set_xlabel("Token Position")
+    identity_positions = identity_positions or set()
+    ax.set_xlabel("Token (swapped identity tokens in red)" if identity_positions else "Token")
 
     x_positions = list(pivot.columns)
     xtick_labels = []
@@ -544,12 +549,35 @@ def plot_token_labeled_heatmap(
         token_label = truncate_label(labels_by_pos.get(pos_int, f"tok_{pos_int}"), max_label_chars)
         xtick_labels.append(f"{pos_int}:{token_label}" if top_positions is not None else token_label)
     ax.set_xticks(range(len(x_positions)))
-    ax.set_xticklabels(xtick_labels, rotation=75, ha="right", fontsize=7)
+    tick_objs = ax.set_xticklabels(xtick_labels, rotation=75, ha="right", fontsize=7)
+    # Highlight the swapped identity tokens (the causal drivers of bias_effect).
+    for tick, pos in zip(tick_objs, x_positions):
+        if int(pos) in identity_positions:
+            tick.set_color("crimson")
+            tick.set_fontweight("bold")
     ax.set_yticks(range(len(pivot.index)))
     ax.set_yticklabels([str(int(y)) for y in pivot.index])
+
+    # Outline token groups (e.g. the stereotyped identity in the context and in its
+    # answer option) so the context->answer mapping is easy to read.
+    pos_to_col = {int(p): i for i, p in enumerate(x_positions)}
+    n_layers = len(pivot.index)
+    legend_handles: dict[str, Rectangle] = {}
+    for positions, color, label in boxes or []:
+        cols = sorted(pos_to_col[p] for p in positions if p in pos_to_col)
+        if not cols:
+            continue
+        rect = Rectangle(
+            (cols[0] - 0.5, -0.5), (cols[-1] - cols[0]) + 1.0, n_layers,
+            fill=False, edgecolor=color, linewidth=2.5, zorder=5,
+        )
+        ax.add_patch(rect)
+        legend_handles.setdefault(label, Rectangle((0, 0), 1, 1, fill=False, edgecolor=color, linewidth=2.5))
+    if legend_handles:
+        ax.legend(legend_handles.values(), legend_handles.keys(), loc="upper left", fontsize=8, framealpha=0.9)
+
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label(colorbar_label)
-    # TODO: optional shaded prompt spans (Context/Question/A/B/C/Answer) can be added later.
     fig.tight_layout()
     fig.savefig(out_png, dpi=150)
     plt.close(fig)
@@ -562,7 +590,6 @@ def create_token_labeled_plots(
     out_dir: Path,
     plot_value_col: str,
     num_pair_plots: int,
-    top_k_positions: int,
     max_xtick_label_chars: int,
 ) -> list[Path]:
     out_paths: list[Path] = []
@@ -571,54 +598,15 @@ def create_token_labeled_plots(
 
     token_labels = build_token_label_table(pairs, raw_df, tokenizer)
     labels_diag_path = out_dir / "bbq_resid_pre_bias_effect_token_position_label_diagnostics.csv"
-    label_diag = build_label_diagnostics(token_labels, labels_diag_path)
+    build_label_diagnostics(token_labels, labels_diag_path)
     out_paths.append(labels_diag_path)
-    labels_by_pos = representative_labels(token_labels)
-    valid_positions = set(
-        label_diag[label_diag["is_interpretable"] == True]["token_position"].astype(int).tolist()
-    )
 
-    def agg_and_plot(sub_df: pd.DataFrame, suffix: str) -> None:
-        agg = sub_df.groupby(["layer", "token_position"], as_index=False)[plot_value_col].mean()
-        agg = agg[agg["token_position"].isin(valid_positions)].copy()
-        labeled_png = out_dir / f"bbq_resid_pre_bias_effect_token_labeled_heatmap_{suffix}.png"
-        plot_token_labeled_heatmap(
-            agg_df=agg,
-            labels_by_pos=labels_by_pos,
-            value_col=plot_value_col,
-            out_png=labeled_png,
-            title=f"BBQ resid_pre token-labeled ({suffix})",
-            colorbar_label="Mean Bias Effect" if plot_value_col == "bias_effect" else f"Mean {plot_value_col}",
-            max_label_chars=max_xtick_label_chars,
-        )
-        out_paths.append(labeled_png)
-
-        pos_importance = (
-            agg.groupby("token_position")[plot_value_col].apply(lambda s: s.abs().mean()).reset_index(name="importance")
-        )
-        top_positions = (
-            pos_importance.sort_values("importance", ascending=False)
-            .head(top_k_positions)["token_position"]
-            .sort_values()
-            .astype(int)
-            .tolist()
-        )
-        top_png = out_dir / f"bbq_resid_pre_top_positions_{suffix}.png"
-        plot_token_labeled_heatmap(
-            agg_df=agg,
-            labels_by_pos=labels_by_pos,
-            value_col=plot_value_col,
-            out_png=top_png,
-            title=f"BBQ resid_pre top-{top_k_positions} positions ({suffix})",
-            colorbar_label="Mean Bias Effect" if plot_value_col == "bias_effect" else f"Mean {plot_value_col}",
-            max_label_chars=max_xtick_label_chars,
-            top_positions=top_positions,
-        )
-        out_paths.append(top_png)
-
-    agg_and_plot(raw_df, "all")
-    agg_and_plot(raw_df[raw_df["question_polarity"].astype(str) == "neg"], "neg")
-    agg_and_plot(raw_df[raw_df["question_polarity"].astype(str) == "nonneg"], "nonneg")
+    # NOTE: cross-pair aggregates by raw token position are intentionally NOT produced
+    # here. Different pairs have different content at each position index, so averaging
+    # by position mislabels and mixes tokens (the "most common token" at a position is
+    # usually punctuation like ':' or '.'). The valid cross-pair aggregate is the span
+    # heatmap (see write_span_outputs); the per-pair plots below are valid because
+    # positions align within a single pair.
 
     pair_meta = pairs.reset_index().rename(columns={"index": "pair_id"})
     n_pair_plots = min(num_pair_plots, len(pair_meta))
@@ -628,23 +616,80 @@ def create_token_labeled_plots(
         sub = raw_df[raw_df["pair_id"] == pid]
         if sub.empty:
             continue
-        sub = sub[sub["token_position"].isin(valid_positions)].copy()
-        if sub.empty:
+        agg = sub.groupby(["layer", "token_position"], as_index=False)[plot_value_col].mean()
+        # Keep only positions that carry signal; everything before the first swapped
+        # identity token is exactly 0 by construction and adds dead columns.
+        keep = nonzero_positions(agg, plot_value_col)
+        if not keep:
             continue
+        agg = agg[agg["token_position"].isin(keep)].copy()
         pair_labels = token_labels[token_labels["pair_id"] == pid]
         pair_label_map = {
             int(r["token_position"]): normalize_token_label(str(r["clean_token_text"]))
             for _, r in pair_labels.iterrows()
-            if int(r["token_position"]) in valid_positions
         }
-        agg = sub.groupby(["layer", "token_position"], as_index=False)[plot_value_col].mean()
+        identity_positions = set()
+        boxes: list[tuple[list[int], str, str]] = []
+        if {"span", "is_identity_token", "token_text_clean"} <= set(sub.columns):
+            identity_positions = {
+                int(p)
+                for p in sub.loc[sub["is_identity_token"] == 1, "token_position"].unique()
+                if int(p) in keep
+            }
+            # Outline BOTH swapped identities so it's unambiguous which tokens are which:
+            #  - the stereotyped TARGET (green; from target_letters, polarity-independent)
+            #  - the DISTRACTOR it is swapped against (orange).
+            # Each identity is boxed where it appears in the context and as its answer option.
+            pos_info = sub.drop_duplicates("token_position")
+            pos_info = pos_info[pos_info["token_position"].isin(keep)]
+
+            def boxes_for_option(opt_span: str, color: str, label: str) -> list[tuple[list[int], str, str]]:
+                opt = pos_info[(pos_info["span"] == opt_span) & (pos_info["is_identity_token"] == 1)]
+                opt_positions = [int(p) for p in opt["token_position"]]
+                texts = set(opt["token_text_clean"].astype(str))
+                ctx = pos_info[
+                    (pos_info["span"] == "context")
+                    & (pos_info["is_identity_token"] == 1)
+                    & (pos_info["token_text_clean"].astype(str).isin(texts))
+                ]
+                ctx_positions = [int(p) for p in ctx["token_position"]]
+                made = []
+                if ctx_positions:
+                    made.append((ctx_positions, color, label))
+                if opt_positions:
+                    made.append((opt_positions, color, label))
+                return made
+
+            def meta_group(key: str, fallback: str) -> str:
+                v = meta.get(key)
+                return str(v) if isinstance(v, str) and v.strip() else fallback
+
+            target_letter = first_letter(str(meta.get("clean_target_letters", "")))
+            named_opt_spans = sorted(
+                pos_info.loc[
+                    (pos_info["is_identity_token"] == 1)
+                    & (pos_info["span"].astype(str).str.startswith("option_")),
+                    "span",
+                ].astype(str).unique()
+            )
+            target_span = f"option_{target_letter}" if target_letter in LETTERS else None
+            distractor_span = next((s for s in named_opt_spans if s != target_span), None)
+            if target_span in named_opt_spans:
+                boxes += boxes_for_option(
+                    target_span, "#00b050", f"target — {meta_group('target_identity_group', 'stereotyped')}"
+                )
+            if distractor_span:
+                boxes += boxes_for_option(
+                    distractor_span, "#e07000", f"distractor — {meta_group('distractor_identity_group', 'reference')}"
+                )
         out_path = per_pair_dir / (
             f"pair_{pid}_clean_{int(meta['clean_example_id'])}_corrupt_{int(meta['corrupt_example_id'])}.png"
         )
         title = (
             f"pair {pid} | {meta['question_polarity']} | "
             f"{int(meta['clean_example_id'])}->{int(meta['corrupt_example_id'])} | "
-            f"{meta['clean_biased_letter']} vs {meta['clean_unknown_letter_metric']}"
+            f"readout {meta['clean_biased_letter']} vs {meta['clean_unknown_letter_metric']} | "
+            f"target {first_letter(str(meta.get('clean_target_letters', '')))}"
         )
         plot_token_labeled_heatmap(
             agg_df=agg,
@@ -654,6 +699,8 @@ def create_token_labeled_plots(
             title=title,
             colorbar_label="Bias Effect" if plot_value_col == "bias_effect" else plot_value_col,
             max_label_chars=max_xtick_label_chars,
+            identity_positions=identity_positions,
+            boxes=boxes,
         )
         out_paths.append(out_path)
 
@@ -665,12 +712,6 @@ def run_patching(
     args,
     pairs: pd.DataFrame,
     raw_out_path: Path,
-    heatmap_all_csv: Path,
-    heatmap_neg_csv: Path,
-    heatmap_nonneg_csv: Path,
-    heatmap_all_png: Path,
-    heatmap_neg_png: Path,
-    heatmap_nonneg_png: Path,
 ) -> pd.DataFrame:
     from transformer_lens import HookedTransformer, utils as tl_utils
 
@@ -863,17 +904,6 @@ def run_patching(
 
     raw_df = pd.read_csv(raw_out_path)
     raw_df = ensure_metric_columns(raw_df)
-    value_col = args.plot_value_col
-    all_df = aggregate_from_raw(raw_df, value_col)
-    neg_df = aggregate_from_raw(raw_df[raw_df["question_polarity"].astype(str) == "neg"], value_col)
-    nonneg_df = aggregate_from_raw(raw_df[raw_df["question_polarity"].astype(str) == "nonneg"], value_col)
-    save_aggregate_heatmap_csv(all_df, heatmap_all_csv, value_col)
-    save_aggregate_heatmap_csv(neg_df, heatmap_neg_csv, value_col)
-    save_aggregate_heatmap_csv(nonneg_df, heatmap_nonneg_csv, value_col)
-    colorbar = "Mean Bias Effect" if value_col == "bias_effect" else f"Mean {value_col}"
-    plot_numeric_heatmap(all_df, heatmap_all_png, "BBQ resid_pre Patching (all)", colorbar)
-    plot_numeric_heatmap(neg_df, heatmap_neg_png, "BBQ resid_pre Patching (neg)", colorbar)
-    plot_numeric_heatmap(nonneg_df, heatmap_nonneg_png, "BBQ resid_pre Patching (nonneg)", colorbar)
 
     print("\nRun stats:")
     print(f"  pairs processed: {len(pairs)}")
@@ -900,7 +930,6 @@ def main() -> None:
     parser.add_argument("--raw_csv", type=Path, default=None)
     parser.add_argument("--make_token_labeled_plots", action="store_true")
     parser.add_argument("--num_pair_plots", type=int, default=10)
-    parser.add_argument("--top_k_positions", type=int, default=40)
     parser.add_argument(
         "--metric_mode",
         type=str,
@@ -921,12 +950,6 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     raw_out_path = args.raw_csv or (args.out_dir / "bbq_resid_pre_bias_effect_raw.csv")
     legacy_raw_out_path = args.out_dir / "bbq_resid_pre_patching_raw.csv"
-    heatmap_all_csv = args.out_dir / "bbq_resid_pre_bias_effect_heatmap_all.csv"
-    heatmap_neg_csv = args.out_dir / "bbq_resid_pre_bias_effect_heatmap_neg.csv"
-    heatmap_nonneg_csv = args.out_dir / "bbq_resid_pre_bias_effect_heatmap_nonneg.csv"
-    heatmap_all_png = args.out_dir / "bbq_resid_pre_bias_effect_heatmap_all.png"
-    heatmap_neg_png = args.out_dir / "bbq_resid_pre_bias_effect_heatmap_neg.png"
-    heatmap_nonneg_png = args.out_dir / "bbq_resid_pre_bias_effect_heatmap_nonneg.png"
 
     pairs = prepare_pairs(args.pairs_csv, args.pair_quality, args.context_condition, args.max_pairs)
     print(f"Pairs loaded: {len(pairs)}")
@@ -941,43 +964,12 @@ def main() -> None:
         raw_df = ensure_metric_columns(pd.read_csv(raw_out_path))
         if args.plot_value_col not in raw_df.columns:
             raise ValueError(f"plot_value_col {args.plot_value_col!r} not found in raw CSV")
-        all_df = aggregate_from_raw(raw_df, args.plot_value_col)
-        neg_df = aggregate_from_raw(raw_df[raw_df["question_polarity"].astype(str) == "neg"], args.plot_value_col)
-        nonneg_df = aggregate_from_raw(raw_df[raw_df["question_polarity"].astype(str) == "nonneg"], args.plot_value_col)
-        save_aggregate_heatmap_csv(all_df, heatmap_all_csv, args.plot_value_col)
-        save_aggregate_heatmap_csv(neg_df, heatmap_neg_csv, args.plot_value_col)
-        save_aggregate_heatmap_csv(nonneg_df, heatmap_nonneg_csv, args.plot_value_col)
-        colorbar = (
-            "Mean Bias Effect" if args.plot_value_col == "bias_effect"
-            else f"Mean {args.plot_value_col}"
-        )
-        plot_numeric_heatmap(all_df, heatmap_all_png, "BBQ resid_pre Patching (all)", colorbar)
-        plot_numeric_heatmap(neg_df, heatmap_neg_png, "BBQ resid_pre Patching (neg)", colorbar)
-        plot_numeric_heatmap(nonneg_df, heatmap_nonneg_png, "BBQ resid_pre Patching (nonneg)", colorbar)
     else:
-        raw_df = run_patching(
-            args=args,
-            pairs=pairs,
-            raw_out_path=raw_out_path,
-            heatmap_all_csv=heatmap_all_csv,
-            heatmap_neg_csv=heatmap_neg_csv,
-            heatmap_nonneg_csv=heatmap_nonneg_csv,
-            heatmap_all_png=heatmap_all_png,
-            heatmap_neg_png=heatmap_neg_png,
-            heatmap_nonneg_png=heatmap_nonneg_png,
-        )
+        raw_df = run_patching(args=args, pairs=pairs, raw_out_path=raw_out_path)
 
-    written_paths = [
-        raw_out_path,
-        heatmap_all_csv,
-        heatmap_neg_csv,
-        heatmap_nonneg_csv,
-        heatmap_all_png,
-        heatmap_neg_png,
-        heatmap_nonneg_png,
-    ]
+    written_paths = [raw_out_path]
 
-    # Cross-pair-valid aggregation by semantic span (and identity-token flag).
+    # Canonical cross-pair-valid aggregation: by semantic span (and identity-token flag).
     written_paths.extend(write_span_outputs(raw_df, args.out_dir, args.plot_value_col))
 
     if args.make_token_labeled_plots:
@@ -989,7 +981,6 @@ def main() -> None:
             out_dir=args.out_dir,
             plot_value_col=args.plot_value_col,
             num_pair_plots=args.num_pair_plots,
-            top_k_positions=args.top_k_positions,
             max_xtick_label_chars=args.max_xtick_label_chars,
         )
         written_paths.extend(token_plot_paths)
