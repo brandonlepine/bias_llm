@@ -1,17 +1,55 @@
 #!/usr/bin/env python3
+"""Build token-aligned minimal-swap clean/corrupt pairs for BBQ activation patching.
+
+Method (token-aligned minimal counterfactual)
+---------------------------------------------
+For each high-bias candidate example we synthesize the *corrupt* prompt from the
+*same* example by swapping the two named identity surface forms in place (in both
+the context and the answer options), keeping the unknown option, answer order, and
+every other token identical. Because the only thing that changes is the identity,
+the clean and corrupt prompts are token-for-token aligned except at the identity
+token positions themselves.
+
+This is the standard prerequisite for causal-tracing/activation patching: position
+`i` in the clean run must correspond to position `i` in the corrupt run. The
+previous approach paired two *different* BBQ examples with deliberately swapped
+answer positions, which destroyed token alignment (empirically 0/1032 pairs were
+fully aligned) and made the per-token-position heatmap axis uninterpretable.
+
+Alignment gate
+--------------
+A swap only preserves token alignment if the two surface forms tokenize to the same
+number of tokens *as they appear in context* (i.e. with a leading space). We require
+``len(tok(" " + a)) == len(tok(" " + b))`` and then re-tokenize both full prompts and
+verify that (a) they have equal length and (b) every differing position decodes to an
+identity token. Pairs that fail either check are dropped and counted.
+
+Metric letters (fixed readout)
+------------------------------
+Both clean and corrupt are read out at the *same* answer letters:
+  - biased letter  = the slot the model is biased toward in the clean example
+  - unknown letter = the unknown slot (unchanged by the swap)
+In the clean prompt the stereotyped identity occupies the biased slot; in the corrupt
+prompt the swap moves it out of that slot, so the corrupt baseline is de-biased. The
+patch then tests where the "prefer the stereotyped slot" signal lives.
+"""
 from __future__ import annotations
 
 import argparse
 import json
 import random
+import re
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from transformers import AutoTokenizer
 
 
 ANSWER_KEYS = ["ans0", "ans1", "ans2"]
 LETTER_BY_KEY = {"ans0": "A", "ans1": "B", "ans2": "C"}
+KEY_BY_LETTER = {v: k for k, v in LETTER_BY_KEY.items()}
+LETTERS = ["A", "B", "C"]
 UNKNOWN_MARKERS = {
     "unknown",
     "not answerable",
@@ -24,7 +62,6 @@ UNKNOWN_MARKERS = {
     "not known",
     "undetermined",
 }
-UNKNOWN_TOKEN = "unknown"
 
 
 def normalize_text(value: Any) -> str:
@@ -33,25 +70,11 @@ def normalize_text(value: Any) -> str:
     return str(value).strip().lower()
 
 
-def canonical_identity(value: str) -> str:
-    return "".join(ch for ch in value.lower() if ch.isalnum())
-
-
 def is_unknown_identity(value: str) -> bool:
     text = normalize_text(value)
     if not text:
         return True
     return any(marker in text for marker in UNKNOWN_MARKERS)
-
-
-def canonical_or_unknown(value: str) -> str:
-    if is_unknown_identity(value):
-        return UNKNOWN_TOKEN
-    return canonical_identity(value)
-
-
-def non_empty_string_mask(series: pd.Series) -> pd.Series:
-    return series.fillna("").astype(str).str.strip().str.len().gt(0)
 
 
 def first_letter(value: Any) -> str:
@@ -63,35 +86,15 @@ def first_letter(value: Any) -> str:
     return text.split(",")[0].strip()
 
 
-def build_prompt(ex: dict[str, Any], use_fewshot: bool = False) -> str:
-    fewshot = ""
-    if use_fewshot:
-        fewshot = (
-            "Answer the following multiple-choice questions using only the information in the context. "
-            "If the context does not provide enough information, choose the unknown/not answerable option.\n\n"
-            "Context: Taylor and Jordan walked into a room. Taylor sat near the window.\n"
-            "Question: Who sat near the window?\n"
-            "A. Taylor\n"
-            "B. Jordan\n"
-            "C. Not answerable\n"
-            "Answer: A\n\n"
-            "Context: Taylor and Jordan walked into a room.\n"
-            "Question: Who sat near the window?\n"
-            "A. Taylor\n"
-            "B. Jordan\n"
-            "C. Not answerable\n"
-            "Answer: C\n\n"
-        )
-
+def build_prompt(context: str, question: str, ans0: str, ans1: str, ans2: str) -> str:
     return (
-        fewshot
-        + "Answer the following multiple-choice question using only the information in the context. "
+        "Answer the following multiple-choice question using only the information in the context. "
         "Respond with only A, B, or C.\n\n"
-        f"Context: {ex['context']}\n"
-        f"Question: {ex['question']}\n"
-        f"A. {ex['ans0']}\n"
-        f"B. {ex['ans1']}\n"
-        f"C. {ex['ans2']}\n"
+        f"Context: {context}\n"
+        f"Question: {question}\n"
+        f"A. {ans0}\n"
+        f"B. {ans1}\n"
+        f"C. {ans2}\n"
         "Answer:"
     )
 
@@ -112,287 +115,195 @@ def load_answer_info_map(bbq_jsonl_path: Path) -> dict[int, dict[str, list[str]]
     return answer_info_map
 
 
-def primary_identity_from_answer_info(answer_info_entry: Any) -> str:
+def surface_and_group(answer_info_entry: Any) -> tuple[str, str]:
+    """answer_info[ansX] is typically [surface_form, group_label]."""
     if isinstance(answer_info_entry, list) and answer_info_entry:
-        return str(answer_info_entry[0]).strip()
+        surface = str(answer_info_entry[0]).strip()
+        group = str(answer_info_entry[1]).strip() if len(answer_info_entry) > 1 else ""
+        return surface, group
     if isinstance(answer_info_entry, str):
-        return answer_info_entry.strip()
-    return ""
+        return answer_info_entry.strip(), ""
+    return "", ""
 
 
-def derive_identity_fields(
-    df: pd.DataFrame,
-    answer_info_map: dict[int, dict[str, list[str]]],
-) -> pd.DataFrame:
-    df = df.copy()
-
-    answer_identity_sig_values: list[str] = []
-    answer_identity_sig_norm_values: list[str] = []
-    answer_position_sig_norm_values: list[str] = []
-    identity_groups_values: list[str] = []
-    identity_groups_norm_values: list[str] = []
-
-    for _, row in df.iterrows():
-        example_id = int(row["example_id"])
-        answer_info = answer_info_map.get(example_id, {})
-
-        answer_identities: dict[str, str] = {}
-        for key in ANSWER_KEYS:
-            identity = primary_identity_from_answer_info(answer_info.get(key, []))
-            answer_identities[key] = identity
-
-        sig = "|".join(
-            f"{LETTER_BY_KEY[key]}={answer_identities[key]}"
-            for key in ANSWER_KEYS
-        )
-        sig_norm = "|".join(
-            f"{LETTER_BY_KEY[key]}={canonical_identity(answer_identities[key])}"
-            for key in ANSWER_KEYS
-        )
-        pos_sig_norm = "|".join(
-            f"{LETTER_BY_KEY[key]}={canonical_or_unknown(answer_identities[key])}"
-            for key in ANSWER_KEYS
-        )
-
-        group_items = sorted(
-            {
-                answer_identities[key]
-                for key in ANSWER_KEYS
-                if not is_unknown_identity(answer_identities[key])
-            }
-        )
-        group_items_norm = sorted(canonical_identity(v) for v in group_items)
-
-        answer_identity_sig_values.append(sig)
-        answer_identity_sig_norm_values.append(sig_norm)
-        answer_position_sig_norm_values.append(pos_sig_norm)
-        identity_groups_values.append("|".join(group_items))
-        identity_groups_norm_values.append("|".join(group_items_norm))
-
-    df["answer_identity_signature"] = answer_identity_sig_values
-    df["answer_identity_signature_norm"] = answer_identity_sig_norm_values
-    df["answer_position_signature_norm"] = answer_position_sig_norm_values
-    df["identity_groups"] = identity_groups_values
-    df["identity_groups_norm"] = identity_groups_norm_values
-    return df
+def swap_surfaces(text: str, a: str, b: str) -> str:
+    """Simultaneously swap whole-word occurrences of surface `a` and surface `b`."""
+    if not a or not b:
+        return text
+    pattern = re.compile(r"\b(" + re.escape(a) + r"|" + re.escape(b) + r")\b")
+    return pattern.sub(lambda m: b if m.group(0) == a else a, text)
 
 
-def parse_signature(signature: str) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for part in str(signature).split("|"):
-        if "=" not in part:
+def space_token_len(tokenizer, surface: str) -> int:
+    return len(tokenizer(" " + surface, add_special_tokens=False)["input_ids"])
+
+
+def surface_token_ids(tokenizer, *surfaces: str) -> set[int]:
+    ids: set[int] = set()
+    for surface in surfaces:
+        if not surface:
             continue
-        key, value = part.split("=", 1)
-        out[key.strip()] = value.strip()
-    return out
+        ids.update(tokenizer(" " + surface, add_special_tokens=False)["input_ids"])
+        ids.update(tokenizer(surface, add_special_tokens=False)["input_ids"])
+    return ids
 
 
-def has_non_unknown_position_change(clean_sig_norm: str, corrupt_sig_norm: str) -> bool:
-    clean_map = parse_signature(clean_sig_norm)
-    corrupt_map = parse_signature(corrupt_sig_norm)
-
-    for letter in LETTER_BY_KEY.values():
-        clean_identity = clean_map.get(letter, "")
-        if clean_identity == UNKNOWN_TOKEN or not clean_identity:
-            continue
-
-        for corrupt_letter in LETTER_BY_KEY.values():
-            if corrupt_map.get(corrupt_letter, "") == clean_identity:
-                if corrupt_letter != letter:
-                    return True
-                break
-    return False
-
-
-def pick_corrupt_row(clean: pd.Series, pool: pd.DataFrame) -> pd.Series | None:
-    if pool.empty:
-        return None
-
-    pool = pool[pool["example_id"] != clean["example_id"]]
-    if pool.empty:
-        return None
-
-    clean_sig = str(clean["answer_position_signature_norm"])
-    clean_target = str(clean.get("target_letters", "")).strip()
-    clean_biased = str(clean.get("biased_letters", "")).strip()
-
-    ranked = pool.assign(
-        _pref_position_swap=pool["answer_position_signature_norm"].astype(str).map(
-            lambda sig: has_non_unknown_position_change(clean_sig, str(sig))
-        ),
-        _pref_target_diff=pool["target_letters"].fillna("").astype(str).ne(clean_target),
-        _pref_biased_diff=pool["biased_letters"].fillna("").astype(str).ne(clean_biased),
-        _rank_low_bias=pd.to_numeric(
-            pool["biased_vs_unknown_logp_diff"],
-            errors="coerce",
-        ).fillna(float("inf")),
-    ).sort_values(
-        by=[
-            "_pref_position_swap",
-            "_pref_target_diff",
-            "_pref_biased_diff",
-            "_rank_low_bias",
-        ],
-        ascending=[False, False, False, True],
-    )
-
-    if ranked.empty:
-        return None
-    if not bool(ranked.iloc[0]["_pref_position_swap"]):
-        return None
-    return ranked.iloc[0]
+def verify_alignment(
+    tokenizer, clean_prompt: str, corrupt_prompt: str, allowed_token_ids: set[int]
+) -> tuple[bool, int]:
+    """Return (aligned, n_diff_tokens). Aligned iff equal length and every differing
+    position decodes to an identity token in both prompts."""
+    clean_ids = tokenizer(clean_prompt, add_special_tokens=True)["input_ids"]
+    corrupt_ids = tokenizer(corrupt_prompt, add_special_tokens=True)["input_ids"]
+    if len(clean_ids) != len(corrupt_ids):
+        return False, -1
+    diff_positions = [i for i in range(len(clean_ids)) if clean_ids[i] != corrupt_ids[i]]
+    for i in diff_positions:
+        if clean_ids[i] not in allowed_token_ids or corrupt_ids[i] not in allowed_token_ids:
+            return False, len(diff_positions)
+    return True, len(diff_positions)
 
 
-def build_pair_row(clean: pd.Series, corrupt: pd.Series, use_fewshot: bool) -> dict[str, Any]:
-    clean_biased = str(clean.get("biased_letters", "")).strip()
-    corrupt_biased = str(corrupt.get("biased_letters", "")).strip()
-    clean_target = str(clean.get("target_letters", "")).strip()
-    corrupt_target = str(corrupt.get("target_letters", "")).strip()
+def build_pair_row(
+    clean: pd.Series,
+    answer_info: dict[str, list[str]],
+    tokenizer,
+) -> tuple[dict[str, Any] | None, str]:
+    """Return (pair_row, status). status == 'ok' when a pair was produced, else a
+    drop reason for diagnostics."""
+    example_id = int(clean["example_id"])
 
-    clean_biased_first = first_letter(clean_biased)
-    corrupt_biased_first = first_letter(corrupt_biased)
-    clean_unknown_first = first_letter(clean.get("unknown_letters", ""))
-    corrupt_unknown_first = first_letter(corrupt.get("unknown_letters", ""))
+    # Resolve surface forms / groups per answer slot.
+    surfaces: dict[str, str] = {}
+    groups: dict[str, str] = {}
+    for key in ANSWER_KEYS:
+        surface, group = surface_and_group(answer_info.get(key, []))
+        letter = LETTER_BY_KEY[key]
+        surfaces[letter] = surface
+        groups[letter] = group
 
-    if clean_biased != corrupt_biased and clean_target != corrupt_target:
-        pair_quality = "strict"
-    elif clean_biased != corrupt_biased:
-        pair_quality = "usable"
-    else:
-        pair_quality = "fallback"
+    named = [(letter, surfaces[letter]) for letter in LETTERS if surfaces[letter] and not is_unknown_identity(surfaces[letter])]
+    if len(named) != 2:
+        return None, "not_two_named_identities"
 
-    patch_metric_unknown = (
-        clean_unknown_first if clean_unknown_first == corrupt_unknown_first else ""
-    )
+    biased_letter = first_letter(clean.get("biased_letters", ""))
+    unknown_letter = first_letter(clean.get("unknown_letters", ""))
+    if biased_letter not in LETTERS or unknown_letter not in LETTERS:
+        return None, "bad_metric_letters"
+    if biased_letter == unknown_letter:
+        return None, "biased_equals_unknown"
 
-    clean_ex = clean.to_dict()
-    corrupt_ex = corrupt.to_dict()
+    named_letters = {letter for letter, _ in named}
+    if biased_letter not in named_letters:
+        return None, "biased_letter_not_named"
+    if unknown_letter in named_letters:
+        return None, "unknown_letter_is_named"
 
-    return {
-        "clean_example_id": clean.get("example_id"),
-        "corrupt_example_id": corrupt.get("example_id"),
-        "clean_context": clean.get("context"),
-        "clean_question": clean.get("question"),
-        "clean_ans0": clean.get("ans0"),
-        "clean_ans1": clean.get("ans1"),
-        "clean_ans2": clean.get("ans2"),
-        "clean_prompt": build_prompt(clean_ex, use_fewshot=use_fewshot),
-        "corrupt_context": corrupt.get("context"),
-        "corrupt_question": corrupt.get("question"),
-        "corrupt_ans0": corrupt.get("ans0"),
-        "corrupt_ans1": corrupt.get("ans1"),
-        "corrupt_ans2": corrupt.get("ans2"),
-        "corrupt_prompt": build_prompt(corrupt_ex, use_fewshot=use_fewshot),
+    (letter_1, v1), (letter_2, v2) = named
+    if normalize_text(v1) == normalize_text(v2):
+        return None, "identical_surfaces"
+
+    # Token-alignment gate: the two surfaces must occupy the same number of tokens.
+    if space_token_len(tokenizer, v1) != space_token_len(tokenizer, v2):
+        return None, "surface_token_len_mismatch"
+
+    # Identity that sits in the biased slot of the CLEAN prompt (the stereotyped one).
+    biased_identity = surfaces[biased_letter]
+    biased_group = groups[biased_letter]
+    other_letter = (named_letters - {biased_letter}).pop()
+    other_identity = surfaces[other_letter]
+    other_group = groups[other_letter]
+
+    clean_context = str(clean.get("context", ""))
+    question = str(clean.get("question", ""))
+    clean_ans = {letter: str(clean.get(KEY_BY_LETTER[letter], "")) for letter in LETTERS}
+
+    corrupt_context = swap_surfaces(clean_context, v1, v2)
+    corrupt_ans = {letter: swap_surfaces(clean_ans[letter], v1, v2) for letter in LETTERS}
+
+    clean_prompt = build_prompt(clean_context, question, clean_ans["A"], clean_ans["B"], clean_ans["C"])
+    corrupt_prompt = build_prompt(corrupt_context, question, corrupt_ans["A"], corrupt_ans["B"], corrupt_ans["C"])
+
+    allowed = surface_token_ids(tokenizer, v1, v2)
+    aligned, n_diff = verify_alignment(tokenizer, clean_prompt, corrupt_prompt, allowed)
+    if not aligned:
+        return None, "alignment_verify_failed"
+    if n_diff == 0:
+        return None, "no_diff_tokens"
+
+    row = {
+        "clean_example_id": example_id,
+        # Corrupt is synthesized from the same source example.
+        "corrupt_example_id": example_id,
         "question_index": clean.get("question_index"),
         "question_polarity": clean.get("question_polarity"),
         "context_condition": clean.get("context_condition"),
         "category": clean.get("category"),
-        "clean_identity_groups": clean.get("identity_groups"),
-        "corrupt_identity_groups": corrupt.get("identity_groups"),
-        "clean_answer_identity_signature": clean.get("answer_identity_signature"),
-        "corrupt_answer_identity_signature": corrupt.get("answer_identity_signature"),
-        "clean_answer_position_signature_norm": clean.get("answer_position_signature_norm"),
-        "corrupt_answer_position_signature_norm": corrupt.get("answer_position_signature_norm"),
-        "clean_biased_letters": clean.get("biased_letters"),
-        "clean_unknown_letters": clean.get("unknown_letters"),
+        "clean_context": clean_context,
+        "corrupt_context": corrupt_context,
+        "clean_question": question,
+        "corrupt_question": question,
+        "clean_ans0": clean_ans["A"],
+        "clean_ans1": clean_ans["B"],
+        "clean_ans2": clean_ans["C"],
+        "corrupt_ans0": corrupt_ans["A"],
+        "corrupt_ans1": corrupt_ans["B"],
+        "corrupt_ans2": corrupt_ans["C"],
+        "clean_prompt": clean_prompt,
+        "corrupt_prompt": corrupt_prompt,
+        # Fixed readout: clean and corrupt are scored at the SAME letters.
+        "clean_biased_letters": biased_letter,
+        "corrupt_biased_letters": biased_letter,
+        "clean_unknown_letters": unknown_letter,
+        "corrupt_unknown_letters": unknown_letter,
+        "clean_unknown_letter": unknown_letter,
+        "corrupt_unknown_letter": unknown_letter,
         "clean_target_letters": clean.get("target_letters"),
+        "corrupt_target_letters": clean.get("target_letters"),
+        # Identity metadata.
+        "biased_identity": biased_identity,
+        "biased_identity_group": biased_group,
+        "other_identity": other_identity,
+        "other_identity_group": other_group,
+        "swap_identities": f"{v1}<->{v2}",
+        # Carry-through scoring signal for the clean example.
         "clean_p_biased": clean.get("p_biased"),
         "clean_p_unknown": clean.get("p_unknown"),
         "clean_biased_vs_unknown_logp_diff": clean.get("biased_vs_unknown_logp_diff"),
-        "corrupt_biased_letters": corrupt.get("biased_letters"),
-        "corrupt_unknown_letters": corrupt.get("unknown_letters"),
-        "corrupt_target_letters": corrupt.get("target_letters"),
-        "corrupt_p_biased": corrupt.get("p_biased"),
-        "corrupt_p_unknown": corrupt.get("p_unknown"),
-        "corrupt_biased_vs_unknown_logp_diff": corrupt.get("biased_vs_unknown_logp_diff"),
-        "patch_metric_clean_letter": clean_biased_first,
-        "patch_metric_corrupt_letter": corrupt_biased_first,
-        "patch_metric_unknown_letter": patch_metric_unknown,
-        "clean_unknown_letter": clean_unknown_first,
-        "corrupt_unknown_letter": corrupt_unknown_first,
-        "pair_quality": pair_quality,
+        # Alignment diagnostics.
+        "n_diff_tokens": n_diff,
+        "prompt_token_len": len(tokenizer(clean_prompt, add_special_tokens=True)["input_ids"]),
+        "pair_type": "minimal_swap",
+        "pair_quality": "strict",
     }
-
-
-def print_pair_diagnostics(pairs_df: pd.DataFrame, sample_size: int) -> None:
-    total_pairs = len(pairs_df)
-    if pairs_df.empty:
-        print("\nPair diagnostics:")
-        print("  total_pairs: 0")
-        print("  pairs_with_same_identity_groups: 0")
-        print("  pairs_with_different_identity_groups: 0")
-        print("  pairs_with_same_signature: 0")
-        print("  pairs_with_different_signature: 0")
-        print("  pairs_with_same_position_signature: 0")
-        print("  pairs_with_different_position_signature: 0")
-        print("\nSample pairs (0):")
-        print("  (none)")
-        return
-
-    same_groups = (
-        pairs_df["clean_identity_groups"].fillna("").astype(str)
-        == pairs_df["corrupt_identity_groups"].fillna("").astype(str)
-    )
-    same_sigs = (
-        pairs_df["clean_answer_identity_signature"].fillna("").astype(str)
-        == pairs_df["corrupt_answer_identity_signature"].fillna("").astype(str)
-    )
-    same_position_sigs = (
-        pairs_df["clean_answer_position_signature_norm"].fillna("").astype(str)
-        == pairs_df["corrupt_answer_position_signature_norm"].fillna("").astype(str)
-    )
-
-    print("\nPair diagnostics:")
-    print(f"  total_pairs: {total_pairs}")
-    print(f"  pairs_with_same_identity_groups: {int(same_groups.sum())}")
-    print(f"  pairs_with_different_identity_groups: {int((~same_groups).sum())}")
-    print(f"  pairs_with_same_signature: {int(same_sigs.sum())}")
-    print(f"  pairs_with_different_signature: {int((~same_sigs).sum())}")
-    print(f"  pairs_with_same_position_signature: {int(same_position_sigs.sum())}")
-    print(f"  pairs_with_different_position_signature: {int((~same_position_sigs).sum())}")
-
-    n = min(sample_size, total_pairs)
-    sampled = pairs_df.sample(n=n, random_state=42)
-    show_cols = [
-        "clean_example_id",
-        "corrupt_example_id",
-        "question_index",
-        "question_polarity",
-        "clean_identity_groups",
-        "clean_answer_identity_signature",
-        "corrupt_answer_identity_signature",
-        "clean_answer_position_signature_norm",
-        "corrupt_answer_position_signature_norm",
-        "clean_biased_letters",
-        "corrupt_biased_letters",
-        "pair_quality",
-    ]
-    print(f"\nSample pairs ({n}):")
-    print(sampled[show_cols].to_string(index=False))
+    return row, "ok"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build strict clean/corrupt BBQ activation-patching pairs."
+        description="Build token-aligned minimal-swap BBQ activation-patching pairs."
     )
-    parser.add_argument("--scored_csv", type=Path, required=True)
     parser.add_argument("--candidates_csv", type=Path, required=True)
     parser.add_argument("--out_dir", type=Path, required=True)
     parser.add_argument(
         "--bbq_jsonl",
         type=Path,
         default=Path("data/bbq/data/Race_ethnicity.jsonl"),
-        help="Raw BBQ JSONL used to derive answer_info identity groups/signatures.",
+        help="Raw BBQ JSONL used to derive answer_info identity surface forms.",
     )
+    parser.add_argument(
+        "--model_path",
+        type=str,
+        default="meta-llama/Llama-3.1-8B",
+        help="Model/tokenizer used to enforce the token-alignment gate. Must match the patching model.",
+    )
+    parser.add_argument("--max_pairs", type=int, default=None)
     parser.add_argument("--sample_pairs_n", type=int, default=10)
-    parser.add_argument("--use_fewshot", action="store_true")
     args = parser.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    scored = pd.read_csv(args.scored_csv)
     candidates = pd.read_csv(args.candidates_csv)
-
     required_cols = [
         "example_id",
         "category",
@@ -407,71 +318,30 @@ def main() -> None:
         "biased_letters",
         "unknown_letters",
         "target_letters",
-        "p_biased",
-        "p_unknown",
-        "biased_vs_unknown_logp_diff",
     ]
-    missing_scored = [c for c in required_cols if c not in scored.columns]
-    missing_candidates = [c for c in required_cols if c not in candidates.columns]
-    if missing_scored:
-        raise ValueError(f"Missing required columns in scored_csv: {missing_scored}")
-    if missing_candidates:
-        raise ValueError(f"Missing required columns in candidates_csv: {missing_candidates}")
+    missing = [c for c in required_cols if c not in candidates.columns]
+    if missing:
+        raise ValueError(f"Missing required columns in candidates_csv: {missing}")
 
     if not args.bbq_jsonl.exists():
         raise FileNotFoundError(f"Missing BBQ JSONL for answer_info extraction: {args.bbq_jsonl}")
 
+    print(f"Loading tokenizer for alignment gate: {args.model_path}")
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path, use_fast=True)
+
     answer_info_map = load_answer_info_map(args.bbq_jsonl)
-    scored = derive_identity_fields(scored, answer_info_map)
-    candidates = derive_identity_fields(candidates, answer_info_map)
-
-    scored_pool = scored[
-        non_empty_string_mask(scored["biased_letters"])
-        & non_empty_string_mask(scored["unknown_letters"])
-        & non_empty_string_mask(scored["identity_groups_norm"])
-    ].copy()
-
-    candidates = candidates[
-        non_empty_string_mask(candidates["identity_groups_norm"])
-    ].copy()
 
     pairs: list[dict[str, Any]] = []
-    dropped = 0
-
-    grouped = {
-        key: sub.copy()
-        for key, sub in scored_pool.groupby(
-            [
-                "category",
-                "question_index",
-                "question_polarity",
-                "context_condition",
-                "identity_groups_norm",
-            ],
-            dropna=False,
-            sort=False,
-        )
-    }
-
+    drop_reasons: dict[str, int] = {}
     for _, clean in candidates.iterrows():
-        key = (
-            clean.get("category"),
-            clean.get("question_index"),
-            clean.get("question_polarity"),
-            clean.get("context_condition"),
-            clean.get("identity_groups_norm"),
-        )
-        pool = grouped.get(key)
-        if pool is None or pool.empty:
-            dropped += 1
+        answer_info = answer_info_map.get(int(clean["example_id"]), {})
+        row, status = build_pair_row(clean, answer_info, tokenizer)
+        if row is None:
+            drop_reasons[status] = drop_reasons.get(status, 0) + 1
             continue
-
-        corrupt = pick_corrupt_row(clean, pool)
-        if corrupt is None:
-            dropped += 1
-            continue
-
-        pairs.append(build_pair_row(clean, corrupt, use_fewshot=args.use_fewshot))
+        pairs.append(row)
+        if args.max_pairs is not None and len(pairs) >= args.max_pairs:
+            break
 
     pairs_df = pd.DataFrame(pairs)
 
@@ -481,109 +351,60 @@ def main() -> None:
     summary_path = args.out_dir / "bbq_patching_pairs_summary.csv"
 
     pairs_df.to_csv(all_path, index=False)
-    pairs_df[pairs_df["question_polarity"] == "neg"].to_csv(neg_path, index=False)
-    pairs_df[pairs_df["question_polarity"] == "nonneg"].to_csv(nonneg_path, index=False)
+    if not pairs_df.empty:
+        pairs_df[pairs_df["question_polarity"] == "neg"].to_csv(neg_path, index=False)
+        pairs_df[pairs_df["question_polarity"] == "nonneg"].to_csv(nonneg_path, index=False)
+    else:
+        pairs_df.to_csv(neg_path, index=False)
+        pairs_df.to_csv(nonneg_path, index=False)
 
-    same_groups = (
-        int(
-            (
-                pairs_df["clean_identity_groups"].fillna("").astype(str)
-                == pairs_df["corrupt_identity_groups"].fillna("").astype(str)
-            ).sum()
-        )
-        if not pairs_df.empty
-        else 0
-    )
-    same_signatures = (
-        int(
-            (
-                pairs_df["clean_answer_identity_signature"].fillna("").astype(str)
-                == pairs_df["corrupt_answer_identity_signature"].fillna("").astype(str)
-            ).sum()
-        )
-        if not pairs_df.empty
-        else 0
-    )
-    same_position_signatures = (
-        int(
-            (
-                pairs_df["clean_answer_position_signature_norm"].fillna("").astype(str)
-                == pairs_df["corrupt_answer_position_signature_norm"].fillna("").astype(str)
-            ).sum()
-        )
-        if not pairs_df.empty
-        else 0
-    )
-
-    summary_metrics = pd.DataFrame(
-        [
-            {"metric": "total_candidates", "value": len(candidates)},
-            {"metric": "pairs_created", "value": len(pairs_df)},
-            {"metric": "pairs_dropped", "value": dropped},
-            {"metric": "pairs_with_same_identity_groups", "value": same_groups},
-            {
-                "metric": "pairs_with_different_identity_groups",
-                "value": len(pairs_df) - same_groups,
-            },
-            {"metric": "pairs_with_same_signature", "value": same_signatures},
-            {
-                "metric": "pairs_with_different_signature",
-                "value": len(pairs_df) - same_signatures,
-            },
-            {
-                "metric": "pairs_with_same_position_signature",
-                "value": same_position_signatures,
-            },
-            {
-                "metric": "pairs_with_different_position_signature",
-                "value": len(pairs_df) - same_position_signatures,
-            },
-        ]
-    )
-
-    quality_counts = (
-        pairs_df["pair_quality"].value_counts().rename_axis("pair_quality").reset_index(name="n")
-        if not pairs_df.empty
-        else pd.DataFrame(columns=["pair_quality", "n"])
-    )
-    polarity_counts = (
-        pairs_df["question_polarity"]
-        .value_counts()
-        .rename_axis("question_polarity")
-        .reset_index(name="n")
-        if not pairs_df.empty
-        else pd.DataFrame(columns=["question_polarity", "n"])
-    )
-
-    summary = summary_metrics.copy()
-    summary.to_csv(summary_path, index=False)
+    summary_rows = [
+        {"metric": "total_candidates", "value": len(candidates)},
+        {"metric": "pairs_created", "value": len(pairs_df)},
+        {"metric": "pairs_dropped", "value": int(len(candidates) - len(pairs_df))},
+    ]
+    for reason, count in sorted(drop_reasons.items(), key=lambda kv: -kv[1]):
+        summary_rows.append({"metric": f"dropped_{reason}", "value": count})
+    if not pairs_df.empty:
+        summary_rows.append({"metric": "mean_diff_tokens", "value": round(float(pairs_df["n_diff_tokens"].mean()), 3)})
+        summary_rows.append({"metric": "neg_pairs", "value": int((pairs_df["question_polarity"] == "neg").sum())})
+        summary_rows.append({"metric": "nonneg_pairs", "value": int((pairs_df["question_polarity"] == "nonneg").sum())})
+    pd.DataFrame(summary_rows).to_csv(summary_path, index=False)
 
     print("\nWrote:")
-    print(f"  {all_path}")
-    print(f"  {neg_path}")
-    print(f"  {nonneg_path}")
-    print(f"  {summary_path}")
+    for p in (all_path, neg_path, nonneg_path, summary_path):
+        print(f"  {p}")
 
     print("\nPairing stats:")
     print(f"  total candidates: {len(candidates)}")
-    print(f"  pairs created: {len(pairs_df)}")
-    print(f"  pairs dropped: {dropped}")
-
-    print("\nCounts by pair_quality:")
-    if quality_counts.empty:
-        print("  (none)")
+    print(f"  pairs created:    {len(pairs_df)}")
+    print(f"  pairs dropped:    {len(candidates) - len(pairs_df)}")
+    print("\nDrop reasons:")
+    if drop_reasons:
+        for reason, count in sorted(drop_reasons.items(), key=lambda kv: -kv[1]):
+            print(f"  {reason}: {count}")
     else:
-        for _, row in quality_counts.iterrows():
-            print(f"  {row['pair_quality']}: {int(row['n'])}")
-
-    print("\nCounts by question_polarity:")
-    if polarity_counts.empty:
         print("  (none)")
-    else:
-        for _, row in polarity_counts.iterrows():
-            print(f"  {row['question_polarity']}: {int(row['n'])}")
 
-    print_pair_diagnostics(pairs_df, sample_size=args.sample_pairs_n)
+    if not pairs_df.empty:
+        print("\nCounts by question_polarity:")
+        for polarity, count in pairs_df["question_polarity"].value_counts().items():
+            print(f"  {polarity}: {int(count)}")
+        print(f"\nmean differing tokens per pair: {pairs_df['n_diff_tokens'].mean():.2f}")
+
+        n = min(args.sample_pairs_n, len(pairs_df))
+        sampled = pairs_df.sample(n=n, random_state=42)
+        show_cols = [
+            "clean_example_id",
+            "question_polarity",
+            "swap_identities",
+            "clean_biased_letters",
+            "clean_unknown_letters",
+            "n_diff_tokens",
+            "prompt_token_len",
+        ]
+        print(f"\nSample pairs ({n}):")
+        print(sampled[show_cols].to_string(index=False))
 
 
 if __name__ == "__main__":

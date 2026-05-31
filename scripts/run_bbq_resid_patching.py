@@ -17,6 +17,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 LETTERS = ["A", "B", "C"]
 
+# Semantic prompt regions, in display order. Cross-pair aggregation by raw token
+# position is only valid for the fixed instruction prefix and the final answer token
+# (prompts have different lengths/content), so we also aggregate by these spans, which
+# align across pairs and templates.
+SPAN_ORDER = ["instruction", "context", "question", "option_A", "option_B", "option_C", "answer"]
+
 
 def resolve_device(device_arg: str) -> str:
     if device_arg == "auto":
@@ -251,6 +257,140 @@ def save_aggregate_heatmap_csv(df: pd.DataFrame, out_path: Path, value_col: str)
     out = out[["layer", "token_position", mean_col]]
     out.to_csv(out_path, index=False)
     return out
+
+
+def assign_spans(tokenizer, prompt: str) -> list[str]:
+    """Map each token of `prompt` to a semantic span in SPAN_ORDER using char offsets.
+
+    The prompt is built by a fixed template, so the structural markers below are
+    unique and let us segment any prompt regardless of content length. Section-label
+    tokens (``Context:``/``Question:``/``A.``/...) are grouped with the section they
+    introduce. Because clean/corrupt pairs are token-aligned, computing spans on the
+    clean prompt is valid for both members of a pair.
+    """
+    enc = tokenizer(prompt, add_special_tokens=True, return_offsets_mapping=True)
+    offsets = enc["offset_mapping"]
+
+    def find(marker: str, start: int) -> int:
+        pos = prompt.find(marker, start)
+        return pos if pos >= 0 else len(prompt)
+
+    i_ctx = find("Context:", 0)
+    i_q = find("Question:", i_ctx)
+    i_a = find("\nA.", i_q)
+    i_b = find("\nB.", i_a)
+    i_c = find("\nC.", i_b)
+    i_ans = find("\nAnswer:", i_c)
+
+    spans: list[str] = []
+    for start, _end in offsets:
+        if start < i_ctx:
+            spans.append("instruction")
+        elif start < i_q:
+            spans.append("context")
+        elif start < i_a:
+            spans.append("question")
+        elif start < i_b:
+            spans.append("option_A")
+        elif start < i_c:
+            spans.append("option_B")
+        elif start < i_ans:
+            spans.append("option_C")
+        else:
+            spans.append("answer")
+    return spans
+
+
+def aggregate_by_span(raw_df: pd.DataFrame, value_col: str) -> pd.DataFrame:
+    df = raw_df.copy()
+    df["span"] = pd.Categorical(df["span"], categories=SPAN_ORDER, ordered=True)
+    return (
+        df.groupby(["layer", "span"], as_index=False, observed=True)[value_col]
+        .mean()
+        .rename(columns={value_col: "value"})
+        .sort_values(["layer", "span"])
+        .reset_index(drop=True)
+    )
+
+
+def plot_span_heatmap(agg_df: pd.DataFrame, png_path: Path, title: str, colorbar_label: str) -> None:
+    if agg_df.empty:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.set_title(f"{title} (no data)")
+        fig.tight_layout()
+        fig.savefig(png_path, dpi=150)
+        plt.close(fig)
+        return
+
+    present = [s for s in SPAN_ORDER if s in set(agg_df["span"].astype(str))]
+    pivot = (
+        agg_df.assign(span=agg_df["span"].astype(str))
+        .pivot(index="layer", columns="span", values="value")
+        .reindex(columns=present)
+        .sort_index(axis=0)
+    )
+    vmax = robust_symmetric_vlim(pd.Series(pivot.values.ravel()))
+
+    fig, ax = plt.subplots(figsize=(max(6, len(present) * 1.1), 8))
+    im = ax.imshow(
+        pivot.values,
+        aspect="auto",
+        interpolation="nearest",
+        origin="lower",
+        cmap="coolwarm",
+        vmin=-vmax,
+        vmax=vmax,
+    )
+    ax.set_title(title)
+    ax.set_xlabel("Prompt span")
+    ax.set_ylabel("Layer")
+    ax.set_xticks(range(len(present)))
+    ax.set_xticklabels(present, rotation=45, ha="right")
+    ax.set_yticks(range(len(pivot.index)))
+    ax.set_yticklabels([str(int(y)) for y in pivot.index])
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label(colorbar_label)
+    fig.tight_layout()
+    fig.savefig(png_path, dpi=150)
+    plt.close(fig)
+
+
+def write_span_outputs(raw_df: pd.DataFrame, out_dir: Path, value_col: str) -> list[Path]:
+    """Cross-pair-valid aggregation by semantic span (and identity-token flag)."""
+    if "span" not in raw_df.columns:
+        print("  [span] raw CSV has no 'span' column; skipping span aggregation (rerun patching to add it).")
+        return []
+
+    colorbar = "Mean Bias Effect" if value_col == "bias_effect" else f"Mean {value_col}"
+    paths: list[Path] = []
+    splits = [
+        ("all", raw_df),
+        ("neg", raw_df[raw_df["question_polarity"].astype(str) == "neg"]),
+        ("nonneg", raw_df[raw_df["question_polarity"].astype(str) == "nonneg"]),
+    ]
+    for suffix, sub in splits:
+        agg = aggregate_by_span(sub, value_col)
+        csv_path = out_dir / f"bbq_resid_pre_bias_effect_span_heatmap_{suffix}.csv"
+        png_path = out_dir / f"bbq_resid_pre_bias_effect_span_heatmap_{suffix}.png"
+        agg.rename(columns={"value": f"mean_{value_col}"}).to_csv(csv_path, index=False)
+        plot_span_heatmap(agg, png_path, f"BBQ resid_pre by span ({suffix})", colorbar)
+        paths.extend([csv_path, png_path])
+
+    # Identity-resolved view: separate the swapped identity tokens from shared tokens.
+    if "is_identity_token" in raw_df.columns:
+        df = raw_df.copy()
+        df["span"] = pd.Categorical(df["span"], categories=SPAN_ORDER, ordered=True)
+        ident = (
+            df.groupby(["layer", "span", "is_identity_token"], as_index=False, observed=True)[value_col]
+            .mean()
+            .rename(columns={value_col: f"mean_{value_col}"})
+            .sort_values(["layer", "span", "is_identity_token"])
+            .reset_index(drop=True)
+        )
+        ident_path = out_dir / "bbq_resid_pre_bias_effect_by_span_identity.csv"
+        ident.to_csv(ident_path, index=False)
+        paths.append(ident_path)
+    return paths
 
 
 def plot_numeric_heatmap(df: pd.DataFrame, png_path: Path, title: str, colorbar_label: str) -> None:
@@ -615,6 +755,8 @@ def run_patching(
         "question_polarity",
         "layer",
         "token_position",
+        "span",
+        "is_identity_token",
         "token_text",
         "token_text_clean",
         "token_text_corrupt",
@@ -649,6 +791,8 @@ def run_patching(
             corrupt_tokens = tokenizer(corrupt_prompt, return_tensors="pt", add_special_tokens=True)["input_ids"].to(device)
             max_position = min(int(clean_tokens.shape[1]), int(corrupt_tokens.shape[1]))
             total_pair_positions += max_position
+
+            spans = assign_spans(tokenizer, clean_prompt)
 
             clean_logits, clean_cache = model.run_with_cache(
                 clean_tokens, names_filter=lambda n: n.endswith("hook_resid_pre")
@@ -695,6 +839,8 @@ def run_patching(
                             "question_polarity": row["question_polarity"],
                             "layer": layer,
                             "token_position": pos,
+                            "span": spans[pos] if pos < len(spans) else "answer",
+                            "is_identity_token": int(clean_tok_id != corrupt_tok_id),
                             "token_text": token_text_corrupt,
                             "token_text_clean": token_text_clean,
                             "token_text_corrupt": token_text_corrupt,
@@ -830,6 +976,9 @@ def main() -> None:
         heatmap_neg_png,
         heatmap_nonneg_png,
     ]
+
+    # Cross-pair-valid aggregation by semantic span (and identity-token flag).
+    written_paths.extend(write_span_outputs(raw_df, args.out_dir, args.plot_value_col))
 
     if args.make_token_labeled_plots:
         tokenizer = AutoTokenizer.from_pretrained(args.model_path, use_fast=True)

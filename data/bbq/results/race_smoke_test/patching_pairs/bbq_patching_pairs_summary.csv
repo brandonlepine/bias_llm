@@ -1,10 +1,8 @@
 metric,value
-total_candidates,1238
-pairs_created,1032
-pairs_dropped,206
-pairs_with_same_identity_groups,1032
-pairs_with_different_identity_groups,0
-pairs_with_same_signature,0
-pairs_with_different_signature,1032
-pairs_with_same_position_signature,0
-pairs_with_different_position_signature,1032
+total_candidates,1238.0
+pairs_created,315.0
+pairs_dropped,923.0
+dropped_surface_token_len_mismatch,923.0
+mean_diff_tokens,7.657
+neg_pairs,164.0
+nonneg_pairs,151.0
