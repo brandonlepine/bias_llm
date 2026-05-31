@@ -815,12 +815,39 @@ def run_patching(
     patch_evaluations = 0
     total_pair_positions = 0
     n_layers = int(model.cfg.n_layers)
+    patch_batch_size = max(1, int(args.patch_batch_size))
 
-    with raw_out_path.open("w", newline="", encoding="utf-8") as f:
+    # --- Resume / checkpoint: skip pairs already written; per-pair atomic append. ---
+    done_pair_ids: set[int] = set()
+    resume = raw_out_path.exists() and not args.overwrite
+    if resume:
+        try:
+            existing = pd.read_csv(raw_out_path)
+        except Exception:
+            existing = pd.DataFrame()
+        present = sorted(int(p) for p in existing.get("pair_id", pd.Series([], dtype=int)).dropna().unique())
+        if present:
+            # Drop the last present pair (it may be half-written from a crash) and redo it.
+            done_pair_ids = set(present[:-1])
+            existing[existing["pair_id"].isin(done_pair_ids)].reindex(columns=raw_header).to_csv(
+                raw_out_path, index=False
+            )
+            print(f"\nResuming from {raw_out_path}: {len(done_pair_ids)} pairs already complete; "
+                  f"redoing pair {present[-1]} and continuing.")
+            f = raw_out_path.open("a", newline="", encoding="utf-8")
+            writer = csv.DictWriter(f, fieldnames=raw_header)
+        else:
+            resume = False
+    if not resume:
+        f = raw_out_path.open("w", newline="", encoding="utf-8")
         writer = csv.DictWriter(f, fieldnames=raw_header)
         writer.writeheader()
 
+    try:
         for pair_id, row in tqdm(pairs.iterrows(), total=len(pairs), desc="Patching pairs"):
+            pair_id = int(pair_id)
+            if pair_id in done_pair_ids:
+                continue
             clean_prompt = str(row["clean_prompt"])
             corrupt_prompt = str(row["corrupt_prompt"])
             clean_b_tok = letter_token_ids[str(row["clean_biased_letter"])]
@@ -842,65 +869,70 @@ def run_patching(
             clean_bias_metric = metric_from_logits(clean_logits[0, -1, :].float(), clean_b_tok, clean_u_tok)
             corrupt_bias_metric = metric_from_logits(corrupt_logits[0, -1, :].float(), corrupt_b_tok, corrupt_u_tok)
 
+            pair_rows: list[dict[str, Any]] = []
             for layer in range(n_layers):
                 act_name = tl_utils.get_act_name("resid_pre", layer)
-                clean_layer_act = clean_cache[act_name]
-                for pos in range(max_position):
-                    clean_tok_id = int(clean_tokens[0, pos].item())
-                    corrupt_tok_id = int(corrupt_tokens[0, pos].item())
-                    token_text_clean = tokenizer.decode([clean_tok_id]).replace("\n", "\\n")
-                    token_text_corrupt = tokenizer.decode([corrupt_tok_id]).replace("\n", "\\n")
+                clean_layer_act = clean_cache[act_name]  # [1, T, d]
+                # Patch positions in batches: B copies of the corrupt prompt, each row
+                # patched at its own position, so one forward yields B position results.
+                for chunk_start in range(0, max_position, patch_batch_size):
+                    chunk = list(range(chunk_start, min(chunk_start + patch_batch_size, max_position)))
+                    chunk_t = torch.tensor(chunk, device=device)
+                    batched = corrupt_tokens.repeat(len(chunk), 1)
 
-                    def patch_fn(act, hook, pos_idx=pos, clean_act=clean_layer_act):
+                    def patch_fn(act, hook, chunk_t=chunk_t, clean_act=clean_layer_act):
                         act = act.clone()
-                        act[:, pos_idx, :] = clean_act[:, pos_idx, :]
+                        rows = torch.arange(act.shape[0], device=act.device)
+                        act[rows, chunk_t, :] = clean_act[0, chunk_t, :].to(act.dtype)
                         return act
 
-                    patched_logits = model.run_with_hooks(corrupt_tokens, fwd_hooks=[(act_name, patch_fn)])
-                    # Primary bias-localization effect:
-                    # bias_effect > 0: patching clean activation into corrupt increases stereotyped preference.
-                    # bias_effect < 0: patching reduces stereotyped preference.
-                    patched_bias_metric = metric_from_logits(
-                        patched_logits[0, -1, :].float(), corrupt_b_tok, corrupt_u_tok
-                    )
-                    bias_effect = patched_bias_metric - corrupt_bias_metric
+                    patched_logits = model.run_with_hooks(batched, fwd_hooks=[(act_name, patch_fn)])
+                    last = patched_logits[:, -1, :].float()  # [B, vocab]
+                    for i, pos in enumerate(chunk):
+                        clean_tok_id = int(clean_tokens[0, pos].item())
+                        corrupt_tok_id = int(corrupt_tokens[0, pos].item())
+                        patched_bias_metric = float((last[i, corrupt_b_tok] - last[i, corrupt_u_tok]).item())
+                        bias_effect = patched_bias_metric - corrupt_bias_metric
+                        normalized_restoration = safe_normalized(
+                            bias_effect, clean_bias_metric, corrupt_bias_metric
+                        )
+                        token_text_corrupt = tokenizer.decode([corrupt_tok_id]).replace("\n", "\\n")
+                        pair_rows.append(
+                            {
+                                "pair_id": pair_id,
+                                "clean_example_id": row["clean_example_id"],
+                                "corrupt_example_id": row["corrupt_example_id"],
+                                "question_index": row["question_index"],
+                                "question_polarity": row["question_polarity"],
+                                "layer": layer,
+                                "token_position": pos,
+                                "span": spans[pos] if pos < len(spans) else "answer",
+                                "is_identity_token": int(clean_tok_id != corrupt_tok_id),
+                                "token_text": token_text_corrupt,
+                                "token_text_clean": tokenizer.decode([clean_tok_id]).replace("\n", "\\n"),
+                                "token_text_corrupt": token_text_corrupt,
+                                "clean_bias_metric": clean_bias_metric,
+                                "corrupt_bias_metric": corrupt_bias_metric,
+                                "patched_bias_metric": patched_bias_metric,
+                                "bias_effect": bias_effect,
+                                "clean_metric": clean_bias_metric,
+                                "corrupt_metric": corrupt_bias_metric,
+                                "patched_metric": patched_bias_metric,
+                                "raw_restoration": bias_effect,
+                                "normalized_restoration": normalized_restoration,
+                            }
+                        )
+                        patch_evaluations += 1
 
-                    # Kept for backward compatibility with prior analyses.
-                    raw_restoration = bias_effect
-                    normalized_restoration = safe_normalized(
-                        raw_restoration, clean_bias_metric, corrupt_bias_metric
-                    )
-
-                    writer.writerow(
-                        {
-                            "pair_id": pair_id,
-                            "clean_example_id": row["clean_example_id"],
-                            "corrupt_example_id": row["corrupt_example_id"],
-                            "question_index": row["question_index"],
-                            "question_polarity": row["question_polarity"],
-                            "layer": layer,
-                            "token_position": pos,
-                            "span": spans[pos] if pos < len(spans) else "answer",
-                            "is_identity_token": int(clean_tok_id != corrupt_tok_id),
-                            "token_text": token_text_corrupt,
-                            "token_text_clean": token_text_clean,
-                            "token_text_corrupt": token_text_corrupt,
-                            "clean_bias_metric": clean_bias_metric,
-                            "corrupt_bias_metric": corrupt_bias_metric,
-                            "patched_bias_metric": patched_bias_metric,
-                            "bias_effect": bias_effect,
-                            "clean_metric": clean_bias_metric,
-                            "corrupt_metric": corrupt_bias_metric,
-                            "patched_metric": patched_bias_metric,
-                            "raw_restoration": raw_restoration,
-                            "normalized_restoration": normalized_restoration,
-                        }
-                    )
-                    patch_evaluations += 1
+            # Atomic per-pair write + flush → safe to resume after a crash.
+            writer.writerows(pair_rows)
+            f.flush()
 
             del clean_cache, clean_logits, corrupt_logits
             if device == "cuda":
                 torch.cuda.empty_cache()
+    finally:
+        f.close()
 
     raw_df = pd.read_csv(raw_out_path)
     raw_df = ensure_metric_columns(raw_df)
@@ -920,7 +952,20 @@ def main() -> None:
     parser.add_argument("--model_path", type=str, default="meta-llama/Llama-3.1-8B")
     parser.add_argument("--tl_model_name", type=str, default="meta-llama/Llama-3.1-8B")
     parser.add_argument("--max_pairs", type=int, default=None)
-    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=4, help="Batch size for the baseline-metric pass.")
+    parser.add_argument(
+        "--patch_batch_size",
+        type=int,
+        default=16,
+        help="Number of token positions patched per forward pass (batched over positions within a "
+        "layer). Higher = faster on CUDA, more memory. Equivalent to 1 up to floating-point "
+        "batching nondeterminism (~1e-5).",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Start the raw CSV fresh. Default resumes from an existing raw CSV (skips completed pairs).",
+    )
     parser.add_argument("--context_condition", type=str, default="ambig")
     parser.add_argument("--pair_quality", type=str, default="strict")
     parser.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")

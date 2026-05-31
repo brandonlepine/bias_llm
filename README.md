@@ -186,6 +186,13 @@ Inputs:
 - `--tl_model_name`: TransformerLens config name
 - `--out_dir`: output directory
 - optional: `--max_pairs`, `--batch_size`, `--device`, `--dtype`
+- performance / robustness:
+  - `--patch_batch_size N` (default 16): patches N token positions per forward pass
+    (batched over positions within a layer) → ~N× fewer forwards on CUDA. Numerically
+    equivalent to N=1 up to float batching nondeterminism.
+  - **Resume by default**: the raw CSV is written per-pair and flushed, so re-running the
+    same command continues where it left off (skips completed pairs, redoes the last
+    possibly-partial one). Pass `--overwrite` to start fresh.
 - metric control:
   - `--metric_mode bias_effect` (default)
   - `--metric_mode restoration` (legacy mode)

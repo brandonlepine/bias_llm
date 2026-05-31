@@ -1,0 +1,8 @@
+metric,value
+total_candidates,373.0
+pairs_created,173.0
+pairs_dropped,200.0
+dropped_surface_token_len_mismatch,200.0
+mean_diff_tokens,5.676
+neg_pairs,93.0
+nonneg_pairs,80.0
