@@ -1,0 +1,28 @@
+metric,value
+total_rows,45540.0
+needs_manual_review,5309.0
+needs_manual_review_pct,11.66
+parse_status::template_exact,41869.0
+parse_status::common_suffix,3671.0
+parse_status_detail::connective_split,31754.0
+parse_status_detail::linking_verb_split,10593.0
+parse_status_detail::fallback_predicate,1683.0
+parse_status_detail::pattern_A,598.0
+parse_status_detail::pattern_D,472.0
+parse_status_detail::subject_noun_split,408.0
+parse_status_detail::pattern_C,32.0
+top_prefix_template::<IDENTITY> and,2394.0
+top_prefix_template::<IDENTITY> people are,598.0
+top_prefix_template::James is <IDENTITY> and,502.0
+top_prefix_template::Robert is <IDENTITY> and,502.0
+top_prefix_template::John is <IDENTITY> and,502.0
+top_prefix_template::Michael is <IDENTITY> and,502.0
+top_prefix_template::William is <IDENTITY> and,502.0
+top_prefix_template::David is <IDENTITY> and,502.0
+top_prefix_template::Richard is <IDENTITY> and,502.0
+top_prefix_template::Joseph is <IDENTITY> and,502.0
+top_prefix_template::Thomas is <IDENTITY> and,502.0
+top_prefix_template::Charles is <IDENTITY> and,502.0
+top_prefix_template::Christopher is <IDENTITY> and,502.0
+top_prefix_template::Daniel is <IDENTITY> and,502.0
+top_prefix_template::Matthew is <IDENTITY> and,502.0
