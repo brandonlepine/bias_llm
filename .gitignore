@@ -42,6 +42,13 @@ data/bbq/results/*/*
 data/bbq/results/*/patching_pairs/*
 !data/bbq/results/*/patching_pairs/*.csv
 data/bbq/.git/
+# WinoQueer: the `results/` rule above ignores data/winoqueer/results/, but the pod needs
+# the patching-candidate CSVs as input. Track only those (other results stay local).
+!data/winoqueer/results/
+data/winoqueer/results/*
+!data/winoqueer/results/patching_candidates/
+data/winoqueer/results/patching_candidates/*
+!data/winoqueer/results/patching_candidates/*.csv
 status_mi_runpod_results/
 status_mi_runpod_diagnostics_fast/
 status_mi_runpod_diagnostics_fast_figures/
@@ -63,3 +70,4 @@ data/find_identity_span_audit.csv
 status_mi_runpod_figures_latest/
 output_data/**
 pod_results/**
+winoqueer/**

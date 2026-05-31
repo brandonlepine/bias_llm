@@ -375,6 +375,9 @@ def main() -> None:
     parser.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
     parser.add_argument("--dtype", choices=["float16", "bfloat16", "float32"], default="float16")
     parser.add_argument("--max_pairs", type=int, default=None)
+    parser.add_argument("--max_per_predicate", type=int, default=None,
+                        help="Cap rows per predicate (highest bias_score kept) for diversity "
+                        "across predicates. Applied before --max_pairs.")
     parser.add_argument("--patch_batch_size", type=int, default=32)
     parser.add_argument("--num_pair_plots", type=int, default=10)
     parser.add_argument("--overwrite", action="store_true")
@@ -383,10 +386,16 @@ def main() -> None:
     started = time.perf_counter()
     args.out_dir.mkdir(parents=True, exist_ok=True)
     pairs = pd.read_csv(args.pairs_csv)
+    pairs = pairs.sort_values("bias_score", ascending=False)
+    if args.max_per_predicate is not None and "predicate" in pairs.columns:
+        pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate)
+        pairs = pairs.sort_values("bias_score", ascending=False)
     if args.max_pairs is not None:
-        pairs = pairs.head(args.max_pairs).copy()
+        pairs = pairs.head(args.max_pairs)
     pairs = pairs.reset_index(drop=True)
-    print(f"Pairs: {len(pairs)}")
+    n_pred = pairs["predicate"].nunique() if "predicate" in pairs.columns else "?"
+    print(f"Pairs: {len(pairs)} across {n_pred} predicates "
+          f"(max_per_predicate={args.max_per_predicate}, max_pairs={args.max_pairs})")
 
     raw_path = args.out_dir / "winoqueer_resid_pre_patching_raw.csv"
     raw_df = run_patching(args, pairs, raw_path)
