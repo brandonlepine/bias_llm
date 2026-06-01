@@ -337,39 +337,124 @@ def plot_span_heatmap(agg: pd.DataFrame, png: Path, title: str) -> None:
     fig.tight_layout(); fig.savefig(png, dpi=150); plt.close(fig)
 
 
-def plot_pair_heatmap(sub: pd.DataFrame, png: Path, title: str) -> None:
+def plot_pair_heatmap(sub: pd.DataFrame, png: Path, title: str, trim_dead: bool = False) -> None:
+    """Per-(layer, token) bias_effect for one pair. Shows the FULL control sentence so the
+    whole data instance is visible. x-tick labels are color-coded by span:
+      green/bold = identity slot (labeled control←injected_queer),
+      blue       = continuation = the predicate (the readout being scored),
+      grey       = the read-out position (last token before the predicate),
+      black      = other scaffold.
+    """
     sub = sub[sub["token_position"] >= 0].copy()
     if sub.empty:
         return
-    # drop structurally-dead shared_pre columns (bias_effect ~ 0)
-    keep = sub.groupby("token_position")["bias_effect"].apply(lambda s: float(s.abs().max())) > 0
-    keep_pos = set(keep[keep].index.astype(int))
-    sub = sub[sub["token_position"].isin(keep_pos)]
-    if sub.empty:
-        return
+    if trim_dead:
+        imp = sub.groupby("token_position")["bias_effect"].apply(lambda s: float(s.abs().max()))
+        gmax = max(float(imp.max()), 1e-9)
+        keep = set(imp[imp >= 0.02 * gmax].index.astype(int)) | set(sub.loc[sub["is_identity_token"] == 1, "token_position"].astype(int))
+        sub = sub[sub["token_position"].isin(keep)]
     pivot = sub.pivot_table(index="layer", columns="token_position", values="bias_effect").sort_index(axis=0).sort_index(axis=1)
-    labels = sub.drop_duplicates("token_position").set_index("token_position")["token_text_control"].to_dict()
+    meta = sub.drop_duplicates("token_position").set_index("token_position")
+    cols = [int(c) for c in pivot.columns]
     id_pos = set(sub.loc[sub["is_identity_token"] == 1, "token_position"].astype(int))
+    span_of = {c: str(meta.loc[c, "span"]) for c in cols}
+    # The read-out position = the last token BEFORE the first continuation token.
+    cont_positions = sorted(c for c in cols if span_of[c] == "continuation")
+    readout_pos = (cont_positions[0] - 1) if cont_positions else None
+    # Full queer identity name (the injected entity) — clearer than the literal last sub-token.
+    queer_id = str(sub["Gender_ID_x"].iloc[0]).strip()
+
+    def lab(c: int) -> str:
+        ct = str(meta.loc[c, "token_text_control"]).strip()
+        if c in id_pos:  # control identity slot, filled with the queer identity's state
+            return f"{ct}←{queer_id}"
+        return ct
+
     vmax = robust_vlim(pd.Series(pivot.values.ravel()))
-    fig, ax = plt.subplots(figsize=(max(8, pivot.shape[1] * 0.34), 8))
+    fig, ax = plt.subplots(figsize=(max(8, len(cols) * 0.52), 8))
     im = ax.imshow(pivot.values, aspect="auto", origin="lower", cmap="coolwarm", vmin=-vmax, vmax=vmax, interpolation="nearest")
-    ax.set_title(title); ax.set_ylabel("layer"); ax.set_xlabel("control token (queer identity tokens boxed)")
-    cols = list(pivot.columns)
+    ax.set_title(title, fontsize=10)
+    ax.set_ylabel("layer")
+    ax.set_xlabel("full control sentence — green=identity (control←injected queer), blue=predicate (scored), grey=read-out position")
     ax.set_xticks(range(len(cols)))
-    ax.set_xticklabels([str(labels.get(int(c), c)) for c in cols], rotation=75, ha="right", fontsize=7)
+    ticks = ax.set_xticklabels([lab(c) for c in cols], rotation=55, ha="right", fontsize=8)
+    for t, c in zip(ticks, cols):
+        if c in id_pos:
+            t.set_color("#00a000"); t.set_fontweight("bold")
+        elif span_of[c] == "continuation":
+            t.set_color("#1f77b4"); t.set_fontweight("bold")
+        elif c == readout_pos:
+            t.set_color("#777777")
     ax.set_yticks(range(len(pivot.index))); ax.set_yticklabels([str(int(y)) for y in pivot.index])
-    id_cols = sorted(i for i, c in enumerate(cols) if int(c) in id_pos)
+    id_cols = sorted(i for i, c in enumerate(cols) if c in id_pos)
     if id_cols:
         ax.add_patch(Rectangle((id_cols[0] - 0.5, -0.5), (id_cols[-1] - id_cols[0]) + 1.0, len(pivot.index),
                                fill=False, edgecolor="#00b050", linewidth=2.5))
-    fig.colorbar(im, ax=ax).set_label("bias_effect")
+    fig.colorbar(im, ax=ax).set_label("bias_effect = Δ logP(predicate) from injecting queer state at this token/layer")
     fig.tight_layout(); fig.savefig(png, dpi=150); plt.close(fig)
+
+
+def make_outputs(raw_df: pd.DataFrame, out_dir: Path, num_pair_plots: int, trim_dead: bool = False):
+    """Aggregates + plots from a raw patching CSV (used by both full runs and --plot_only)."""
+    span_csv = out_dir / "winoqueer_resid_pre_span_heatmap.csv"
+    span_png = out_dir / "winoqueer_resid_pre_span_heatmap.png"
+    agg = aggregate_by_span(raw_df, "bias_effect")
+    agg.rename(columns={"value": "mean_bias_effect"}).to_csv(span_csv, index=False)
+    plot_span_heatmap(agg, span_png, "WinoQueer resid_pre patching (queer→control) by span — ALL predicates")
+    extra: list[Path] = []
+
+    # Per predicate-label span heatmaps (compare how stereotype categories localize).
+    if "predicate_label_provisional" in raw_df.columns:
+        per_label_dir = out_dir / "per_label_span"
+        per_label_dir.mkdir(parents=True, exist_ok=True)
+        for label, g in raw_df.groupby("predicate_label_provisional"):
+            lab = str(label).strip()
+            if not lab or lab.lower() == "nan":
+                continue
+            safe = "".join(ch if ch.isalnum() else "_" for ch in lab)[:48]
+            a = aggregate_by_span(g, "bias_effect")
+            a.rename(columns={"value": "mean_bias_effect"}).to_csv(per_label_dir / f"span_{safe}.csv", index=False)
+            plot_span_heatmap(a, per_label_dir / f"span_{safe}.png",
+                              f"{lab}  (n={g['pair_id'].nunique()} pairs) — resid_pre by span")
+            extra += [per_label_dir / f"span_{safe}.csv", per_label_dir / f"span_{safe}.png"]
+
+    id_all = raw_df[raw_df["span"] == "identity_all"].groupby("layer", as_index=False)["bias_effect"].mean()
+    id_all_csv = out_dir / "winoqueer_resid_pre_identity_span_by_layer.csv"
+    id_all.rename(columns={"bias_effect": "mean_bias_effect"}).to_csv(id_all_csv, index=False)
+
+    # Per-pair plots: ONE representative (highest-bias) pair per DISTINCT predicate, so the
+    # spot-checks span many stereotypes instead of repeating the single top predicate.
+    per_pair_dir = out_dir / "per_pair"
+    per_pair_dir.mkdir(parents=True, exist_ok=True)
+    first = raw_df.drop_duplicates("pair_id").set_index("pair_id")
+    seen: set[str] = set()
+    chosen: list[int] = []
+    for pid in sorted(raw_df["pair_id"].unique()):
+        pred = str(first.loc[pid, "predicate"])
+        if pred in seen:
+            continue
+        seen.add(pred)
+        chosen.append(int(pid))
+        if len(chosen) >= num_pair_plots:
+            break
+    plot_paths = []
+    for pid in chosen:
+        sub = raw_df[raw_df["pair_id"] == pid]
+        m = sub.iloc[0]
+        safe_pred = "".join(ch if ch.isalnum() else "_" for ch in str(m["predicate"]))[:24]
+        out = per_pair_dir / f"pair{int(pid)}_{m['Gender_ID_x']}_to_{m['Gender_ID_y']}_{safe_pred}.png"
+        title = f"inject {m['Gender_ID_x']} state into '{m['Gender_ID_y']}' prompt  →  Δ logP(predicate={m['predicate']!r})"
+        plot_pair_heatmap(sub, out, title, trim_dead=trim_dead)
+        plot_paths.append(out)
+    return [span_csv, span_png, id_all_csv] + extra + plot_paths, agg, id_all
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="WinoQueer per-token per-layer resid_pre patching (queer→control).")
-    parser.add_argument("--pairs_csv", type=Path, required=True)
+    parser.add_argument("--pairs_csv", type=Path, default=None)
     parser.add_argument("--out_dir", type=Path, required=True)
+    parser.add_argument("--plot_only", action="store_true",
+                        help="Skip the model; rebuild aggregates/plots from an existing raw CSV in --out_dir.")
     parser.add_argument("--model_path", type=str, default="meta-llama/Llama-3.1-8B")
     parser.add_argument("--tl_model_name", type=str, default="meta-llama/Llama-3.1-8B")
     parser.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
@@ -380,51 +465,39 @@ def main() -> None:
                         "across predicates. Applied before --max_pairs.")
     parser.add_argument("--patch_batch_size", type=int, default=32)
     parser.add_argument("--num_pair_plots", type=int, default=10)
+    parser.add_argument("--trim_dead", action="store_true",
+                        help="Trim structurally-zero scaffold columns from per-pair plots. Default: show the full sentence.")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
     started = time.perf_counter()
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    pairs = pd.read_csv(args.pairs_csv)
-    pairs = pairs.sort_values("bias_score", ascending=False)
-    if args.max_per_predicate is not None and "predicate" in pairs.columns:
-        pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate)
-        pairs = pairs.sort_values("bias_score", ascending=False)
-    if args.max_pairs is not None:
-        pairs = pairs.head(args.max_pairs)
-    pairs = pairs.reset_index(drop=True)
-    n_pred = pairs["predicate"].nunique() if "predicate" in pairs.columns else "?"
-    print(f"Pairs: {len(pairs)} across {n_pred} predicates "
-          f"(max_per_predicate={args.max_per_predicate}, max_pairs={args.max_pairs})")
-
     raw_path = args.out_dir / "winoqueer_resid_pre_patching_raw.csv"
-    raw_df = run_patching(args, pairs, raw_path)
 
-    # span aggregation (cross-pair valid) + heatmap
-    span_csv = args.out_dir / "winoqueer_resid_pre_span_heatmap.csv"
-    span_png = args.out_dir / "winoqueer_resid_pre_span_heatmap.png"
-    agg = aggregate_by_span(raw_df, "bias_effect")
-    agg.rename(columns={"value": "mean_bias_effect"}).to_csv(span_csv, index=False)
-    plot_span_heatmap(agg, span_png, "WinoQueer resid_pre patching (queer→control) by span")
+    if args.plot_only:
+        if not raw_path.exists():
+            raise FileNotFoundError(f"--plot_only needs an existing raw CSV at {raw_path}")
+        raw_df = pd.read_csv(raw_path)
+        print(f"plot_only: {raw_df['pair_id'].nunique()} pairs, {raw_df['predicate'].nunique()} predicates from {raw_path}")
+    else:
+        if args.pairs_csv is None:
+            parser.error("--pairs_csv is required unless --plot_only is set")
+        pairs = pd.read_csv(args.pairs_csv).sort_values("bias_score", ascending=False)
+        if args.max_per_predicate is not None and "predicate" in pairs.columns:
+            pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate)
+            pairs = pairs.sort_values("bias_score", ascending=False)
+        if args.max_pairs is not None:
+            pairs = pairs.head(args.max_pairs)
+        pairs = pairs.reset_index(drop=True)
+        n_pred = pairs["predicate"].nunique() if "predicate" in pairs.columns else "?"
+        print(f"Pairs: {len(pairs)} across {n_pred} predicates "
+              f"(max_per_predicate={args.max_per_predicate}, max_pairs={args.max_pairs})")
+        raw_df = run_patching(args, pairs, raw_path)
 
-    # identity-span-all summary (per layer mean effect of injecting the whole queer identity)
-    id_all = raw_df[raw_df["span"] == "identity_all"].groupby("layer", as_index=False)["bias_effect"].mean()
-    id_all_csv = args.out_dir / "winoqueer_resid_pre_identity_span_by_layer.csv"
-    id_all.rename(columns={"bias_effect": "mean_bias_effect"}).to_csv(id_all_csv, index=False)
-
-    # per-pair plots
-    per_pair_dir = args.out_dir / "per_pair"
-    per_pair_dir.mkdir(parents=True, exist_ok=True)
-    plot_paths = []
-    for pid in sorted(raw_df["pair_id"].unique())[: args.num_pair_plots]:
-        sub = raw_df[raw_df["pair_id"] == pid]
-        meta = sub.iloc[0]
-        out = per_pair_dir / f"pair_{int(pid)}_{meta['Gender_ID_x']}_vs_{meta['Gender_ID_y']}.png"
-        plot_pair_heatmap(sub, out, f"pair {int(pid)} | {meta['Gender_ID_x']}→{meta['Gender_ID_y']} | pred={meta['predicate']!r}")
-        plot_paths.append(out)
+    out_paths, agg, id_all = make_outputs(raw_df, args.out_dir, args.num_pair_plots, trim_dead=args.trim_dead)
 
     print("\nWrote:")
-    for p in [raw_path, span_csv, span_png, id_all_csv] + plot_paths:
+    for p in [raw_path] + out_paths:
         print(f"  {p}")
     print("\nMean bias_effect by span (averaged over layers):")
     print(agg.groupby("span", observed=True)["value"].mean().reindex(SPAN_ORDER).to_string())
