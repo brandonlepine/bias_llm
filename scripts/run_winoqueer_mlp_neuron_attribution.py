@@ -57,6 +57,7 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_winoqueer_head_ablation import prep_pair, ablate_positions, load_model  # noqa: E402
 from run_winoqueer_resid_patching import continuation_logp  # noqa: E402
+from winoqueer_identity_taxonomy import MIN_CELL, annotate, group_keys_for_row  # noqa: E402
 
 
 # ----------------------------------------------------------------------------- positions / helpers
@@ -113,13 +114,17 @@ def attribution_forward(model, ids, cont_start, cont_count, pnames, root_name):
     return M_val, values, grads
 
 
-def run_attribution(model, tokenizer, device, pairs, pnames, root_name, n_layers, d_mlp, ablate_mode):
+def run_attribution(model, tokenizer, device, pairs, pnames, root_name, n_layers, d_mlp, ablate_mode,
+                    group_map=None):
     suff_sum = torch.zeros(n_layers, d_mlp, dtype=torch.float32)
     nec_sum = torch.zeros(n_layers, d_mlp, dtype=torch.float32)
     suff_pos = torch.zeros(n_layers, d_mlp, dtype=torch.float32)   # sign-consistency counters
     nec_pos = torch.zeros(n_layers, d_mlp, dtype=torch.float32)
     n_used = 0
     skipped = 0
+    # Per-group accumulators: gacc[key] = [suff_sum, nec_sum, suff_pos, nec_pos, n]. Each pair routes
+    # its (already-CPU) attribution into its axis/identity/axispred/idpred groups. ~<1 GB CPU total.
+    gacc: dict[str, list] = {}
 
     for _, row in tqdm(pairs.iterrows(), total=len(pairs), desc="AtP (suff+nec)"):
         p = prep_pair(tokenizer, row, device)
@@ -150,21 +155,39 @@ def run_attribution(model, tokenizer, device, pairs, pnames, root_name, n_layers
             nec[L] = (-((cv[csrc] - qv[qpos]) * qg[qpos]).sum(0)) / denom
 
         suff_c, nec_c = suff.float().cpu(), nec.float().cpu()
+        suff_pos_c, nec_pos_c = (suff_c > 0).float(), (nec_c > 0).float()
         suff_sum += suff_c
         nec_sum += nec_c
-        suff_pos += (suff_c > 0).float()
-        nec_pos += (nec_c > 0).float()
+        suff_pos += suff_pos_c
+        nec_pos += nec_pos_c
         n_used += 1
-        del valc, gradc, valq, gradq, suff, nec, suff_c, nec_c
+        if group_map is not None:
+            keys = group_map.get(row.get("row_id"))
+            if keys:
+                for key in keys:
+                    ga = gacc.get(key)
+                    if ga is None:
+                        ga = [torch.zeros(n_layers, d_mlp), torch.zeros(n_layers, d_mlp),
+                              torch.zeros(n_layers, d_mlp), torch.zeros(n_layers, d_mlp), 0]
+                        gacc[key] = ga
+                    ga[0] += suff_c; ga[1] += nec_c; ga[2] += suff_pos_c; ga[3] += nec_pos_c; ga[4] += 1
+        del valc, gradc, valq, gradq, suff, nec, suff_c, nec_c, suff_pos_c, nec_pos_c
         if device == "cuda":
             torch.cuda.empty_cache()
 
     print(f"AtP: used {n_used} pairs, skipped {skipped}")
     n = max(n_used, 1)
-    return dict(
+    res = dict(
         suff_mean=(suff_sum / n), nec_mean=(nec_sum / n),
         suff_cons=(suff_pos / n), nec_cons=(nec_pos / n), n_used=n_used,
     )
+    group_res = {}
+    for key, (ssum, nsum, spos, npos, gn) in gacc.items():
+        if gn == 0:
+            continue
+        group_res[key] = dict(suff_mean=ssum / gn, nec_mean=nsum / gn,
+                              suff_cons=spos / gn, nec_cons=npos / gn, n_used=gn)
+    return res, group_res
 
 
 # ----------------------------------------------------------------------------- exact verification
@@ -266,6 +289,62 @@ def build_neuron_df(res, n_layers, d_mlp):
     df["core_score"] = df["suff_pct"] + df["nec_pct"]
     df["n_pairs"] = res["n_used"]
     return df
+
+
+def _safe_name(s: str) -> str:
+    return "".join(ch if ch.isalnum() else "_" for ch in str(s))
+
+
+def build_group_map(pairs, cohort_csv):
+    """row_id -> list of group keys (axis/identity/axispred/idpred). Source is --cohort_csv if given,
+    else --pairs_csv when it already carries Gender_ID_x + predicate_label_provisional + row_id."""
+    need = ["Gender_ID_x", "predicate_label_provisional", "row_id"]
+    src = None
+    if cohort_csv is not None and Path(cohort_csv).exists():
+        src = pd.read_csv(cohort_csv)
+    elif all(c in pairs.columns for c in need):
+        src = pairs
+    if src is None or not all(c in src.columns for c in need):
+        return None
+    src = annotate(src)
+    return {r["row_id"]: group_keys_for_row(r) for _, r in src.iterrows()}
+
+
+def layer_profile(res, n_layers) -> pd.DataFrame:
+    """Per-layer attribution mass (summed positive / abs neuron attribution) for a result dict."""
+    suff_m, nec_m = res["suff_mean"].numpy(), res["nec_mean"].numpy()
+    return pd.DataFrame({
+        "layer": np.arange(n_layers),
+        "suff_pos_mass": np.clip(suff_m, 0, None).sum(1),
+        "nec_pos_mass": np.clip(nec_m, 0, None).sum(1),
+        "suff_abs_mass": np.abs(suff_m).sum(1),
+        "nec_abs_mass": np.abs(nec_m).sum(1),
+    })
+
+
+def write_group_outputs(group_res, out_dir, n_layers, d_mlp, top_csv_rows):
+    """Per-group neuron CSVs (trimmed to top rows by |core_score|) + a combined layer-profile CSV.
+    Predicate-crossed levels (axispred/idpred) are gated at n>=MIN_CELL; axis/identity always emit."""
+    written, prof_rows = [], []
+    for key in sorted(group_res):
+        gres = group_res[key]
+        level = key.split("::", 1)[0]
+        gated = level in ("axispred", "idpred")
+        if gated and gres["n_used"] < MIN_CELL:
+            continue
+        gdf = build_neuron_df(gres, n_layers, d_mlp)
+        gdf.insert(0, "group", key); gdf.insert(1, "level", level)
+        path = out_dir / f"winoqueer_mlp_neuron_attribution__{_safe_name(key)}.csv"
+        gdf.reindex(gdf["core_score"].abs().sort_values(ascending=False).index).head(top_csv_rows).to_csv(path, index=False)
+        written.append(path)
+        prof = layer_profile(gres, n_layers)
+        prof["group"] = key; prof["level"] = level; prof["n_used"] = gres["n_used"]
+        prof_rows.append(prof)
+    if prof_rows:
+        prof_path = out_dir / "winoqueer_mlp_layer_profile_by_group.csv"
+        pd.concat(prof_rows, ignore_index=True).to_csv(prof_path, index=False)
+        written.append(prof_path)
+    return written
 
 
 def make_plots(df, res, out_dir, n_layers, d_mlp, top_bar=25, top_scatter=40):
@@ -398,18 +477,31 @@ def main() -> None:
     ap.add_argument("--verify_topk", type=int, default=96, help="# top neurons per direction to exact-patch (0=skip).")
     ap.add_argument("--verify_pairs", type=int, default=100, help="# pairs used for exact verification.")
     ap.add_argument("--top_csv_rows", type=int, default=4000)
+    ap.add_argument("--no_resort", action="store_true",
+                    help="Consume --pairs_csv in file order (no bias_score re-sort / per-predicate cap).")
+    ap.add_argument("--cohort_csv", type=Path, default=None,
+                    help="Cohort with row_id/Gender_ID_x/predicate_label_provisional for per-group "
+                         "accumulators. If omitted, those columns are read from --pairs_csv when present.")
     args = ap.parse_args()
 
     started = time.perf_counter()
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    pairs = pd.read_csv(args.pairs_csv).sort_values("bias_score", ascending=False)
-    if args.max_per_predicate is not None and "predicate" in pairs.columns:
-        pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
-    if args.max_pairs is not None:
-        pairs = pairs.head(args.max_pairs)
-    pairs = pairs.reset_index(drop=True)
-    print(f"Pairs: {len(pairs)} | ablate_positions={args.ablate_positions} | verify_topk={args.verify_topk}")
+    pairs = pd.read_csv(args.pairs_csv)
+    if args.no_resort:
+        pairs = pairs.reset_index(drop=True)
+        print(f"Pairs: {len(pairs)} (no_resort) | ablate_positions={args.ablate_positions} | verify_topk={args.verify_topk}")
+    else:
+        pairs = pairs.sort_values("bias_score", ascending=False)
+        if args.max_per_predicate is not None and "predicate" in pairs.columns:
+            pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
+        if args.max_pairs is not None:
+            pairs = pairs.head(args.max_pairs)
+        pairs = pairs.reset_index(drop=True)
+        print(f"Pairs: {len(pairs)} | ablate_positions={args.ablate_positions} | verify_topk={args.verify_topk}")
+
+    group_map = build_group_map(pairs, args.cohort_csv)
+    print(f"Per-group accumulation: {'ON' if group_map is not None else 'OFF (no axis/identity columns)'}")
 
     model, tokenizer, device = load_model(args)
     model.requires_grad_(False)                       # freeze weights -> no param-grad blowup
@@ -419,13 +511,19 @@ def main() -> None:
     pnames = post_names(n_layers)
     print(f"Model: {n_layers} layers x {d_mlp} neurons = {n_layers*d_mlp:,} neurons")
 
-    res = run_attribution(model, tokenizer, device, pairs, pnames, root_name, n_layers, d_mlp, args.ablate_positions)
+    res, group_res = run_attribution(model, tokenizer, device, pairs, pnames, root_name, n_layers, d_mlp,
+                                     args.ablate_positions, group_map=group_map)
 
     df = build_neuron_df(res, n_layers, d_mlp)
     full_csv = args.out_dir / "winoqueer_mlp_neuron_attribution.csv"
     df.to_csv(full_csv, index=False)
     top_csv = args.out_dir / "winoqueer_mlp_neuron_attribution_top.csv"
     df.reindex(df["core_score"].abs().sort_values(ascending=False).index).head(args.top_csv_rows).to_csv(top_csv, index=False)
+
+    group_paths = write_group_outputs(group_res, args.out_dir, n_layers, d_mlp, args.top_csv_rows)
+    if group_paths:
+        print(f"Per-group MLP outputs: {len(group_paths)} files "
+              f"({len(group_res)} groups accumulated, gated levels at n>={MIN_CELL}).")
 
     plot_paths, prof = make_plots(df, res, args.out_dir, n_layers, d_mlp)
 
@@ -451,7 +549,7 @@ def main() -> None:
                 print(s[["layer", "neuron", "atp_frac", "exact_frac", "atp_false_positive"]].to_string(index=False))
 
     print("\nWrote:")
-    for p in [full_csv, top_csv] + plot_paths + verify_paths:
+    for p in [full_csv, top_csv] + group_paths + plot_paths + verify_paths:
         print(f"  {p}")
     spear = df["suff_frac"].corr(df["nec_frac"], method="spearman")
     print(f"\nSpearman(suff_frac, nec_frac) over {n_layers*d_mlp:,} neurons: {spear:.3f}")

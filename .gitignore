@@ -49,6 +49,12 @@ data/winoqueer/results/*
 !data/winoqueer/results/patching_candidates/
 data/winoqueer/results/patching_candidates/*
 !data/winoqueer/results/patching_candidates/*.csv
+# The frozen, balanced segmented cohort is the pod input for the identity-segmented run-scripts.
+# Track the cohort + its coverage report; nothing else.
+!data/winoqueer/results/segmented/
+data/winoqueer/results/segmented/*
+!data/winoqueer/results/segmented/cohort.csv
+!data/winoqueer/results/segmented/cohort_coverage.csv
 status_mi_runpod_results/
 status_mi_runpod_diagnostics_fast/
 status_mi_runpod_diagnostics_fast_figures/
@@ -71,3 +77,5 @@ status_mi_runpod_figures_latest/
 output_data/**
 pod_results/**
 winoqueer/**
+# Upstream WinoQueer source repo (cloned locally, not ours to track)
+/winoqueer/

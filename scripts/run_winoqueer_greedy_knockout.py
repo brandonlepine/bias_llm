@@ -101,6 +101,25 @@ def eval_candidates(model, store, selected, remaining):
     return (totals / max(counts, 1)).tolist()
 
 
+@torch.no_grad()
+def greedy_select(model, store, candidate_heads, K):
+    """Greedy knockout on a given pair `store`: at each step add the head that most reduces the
+    remaining bias. Returns step rows [{step, layer, head, mean_frac_remaining}], step 0 = baseline.
+    Used by the bootstrap-seed robustness pass (the main point-estimate keeps its resumable loop)."""
+    selected: list[tuple[int, int]] = []
+    rows = [{"step": 0, "layer": -1, "head": -1, "mean_frac_remaining": 1.0}]
+    for step in range(1, K + 1):
+        remaining = [h for h in candidate_heads if h not in selected]
+        if not remaining:
+            break
+        means = eval_candidates(model, store, selected, remaining)
+        best_i = int(min(range(len(remaining)), key=lambda i: means[i]))
+        best = remaining[best_i]
+        selected.append(best)
+        rows.append({"step": step, "layer": best[0], "head": best[1], "mean_frac_remaining": means[best_i]})
+    return rows
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="WinoQueer greedy head knockout.")
     ap.add_argument("--pairs_csv", type=Path, required=True)
@@ -119,6 +138,14 @@ def main() -> None:
     ap.add_argument("--greedy_steps", type=int, default=30)
     ap.add_argument("--ablate_positions", choices=["all", "identity", "readout"], default="all")
     ap.add_argument("--overwrite", action="store_true")
+    ap.add_argument("--no_resort", action="store_true",
+                    help="Consume --pairs_csv in file order (no bias_score re-sort / per-predicate cap).")
+    ap.add_argument("--group_col", type=str, default=None,
+                    help="Cohort column to filter on (e.g. axis or identity) for a per-group run.")
+    ap.add_argument("--group_value", type=str, default=None, help="Value of --group_col to keep.")
+    ap.add_argument("--seeds", type=int, default=1,
+                    help="If >1, bootstrap-resample the pair set this many times and report per-head "
+                         "selection frequency across seeds (robustness) in addition to the point estimate.")
     args = ap.parse_args()
 
     started = time.perf_counter()
@@ -129,11 +156,20 @@ def main() -> None:
     arank = pd.read_csv(args.ablation_ranking_csv).sort_values("ablation_effect", ascending=False)
     candidate_heads = [(int(r.layer), int(r.head)) for r in arank.head(args.candidate_pool).itertuples()]
 
-    pairs = pd.read_csv(args.pairs_csv).sort_values("bias_score", ascending=False)
-    if args.max_per_predicate is not None and "predicate" in pairs.columns:
-        pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
-    pairs = pairs.head(args.max_pairs).reset_index(drop=True)
-    print(f"Pairs: {len(pairs)} | candidate pool: {len(candidate_heads)} | greedy steps: {args.greedy_steps}")
+    pairs = pd.read_csv(args.pairs_csv)
+    if args.group_col is not None and args.group_value is not None:
+        if args.group_col not in pairs.columns:
+            ap.error(f"--group_col {args.group_col!r} not in cohort columns")
+        pairs = pairs[pairs[args.group_col].astype(str) == args.group_value]
+        print(f"Filtered to {args.group_col}={args.group_value}: {len(pairs)} pairs")
+    if not args.no_resort:
+        pairs = pairs.sort_values("bias_score", ascending=False)
+        if args.max_per_predicate is not None and "predicate" in pairs.columns:
+            pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
+    if args.max_pairs is not None:
+        pairs = pairs.head(args.max_pairs)
+    pairs = pairs.reset_index(drop=True)
+    print(f"Pairs: {len(pairs)} | candidate pool: {len(candidate_heads)} | greedy steps: {args.greedy_steps} | seeds: {args.seeds}")
 
     model, tokenizer, device = load_model(args)
     store = precompute(model, tokenizer, device, pairs, candidate_heads, args.ablate_positions)
@@ -179,6 +215,40 @@ def main() -> None:
     ax.legend()
     png = args.out_dir / "winoqueer_greedy_knockout_curve.png"
     fig.tight_layout(); fig.savefig(png, dpi=160, bbox_inches="tight"); plt.close(fig)
+
+    # ---- robustness: bootstrap the pair set, report per-head selection frequency ----
+    if args.seeds and args.seeds > 1 and store:
+        import numpy as np
+        rng = np.random.default_rng(0)
+        sel_count: dict[tuple[int, int], int] = defaultdict(int)
+        step_sum: dict[tuple[int, int], int] = defaultdict(int)
+        for seed in range(args.seeds):
+            idx = rng.integers(0, len(store), size=len(store))
+            sub = [store[i] for i in idx]
+            grows = greedy_select(model, sub, candidate_heads, K)
+            for r in grows[1:]:
+                h = (int(r["layer"]), int(r["head"]))
+                sel_count[h] += 1
+                step_sum[h] += int(r["step"])
+            print(f"  seed {seed+1}/{args.seeds}: selected {len(grows)-1} heads")
+            if device == "cuda":
+                torch.cuda.empty_cache()
+        freq = pd.DataFrame([
+            {"layer": h[0], "head": h[1], "selection_frequency": c / args.seeds,
+             "mean_selection_step": step_sum[h] / c}
+            for h, c in sel_count.items()
+        ]).sort_values("selection_frequency", ascending=False).reset_index(drop=True)
+        freq_csv = args.out_dir / "winoqueer_greedy_selection_frequency.csv"
+        freq.to_csv(freq_csv, index=False)
+        top = freq.head(30).iloc[::-1]
+        fig2, ax2 = plt.subplots(figsize=(9.5, max(4, len(top) * 0.3)))
+        ax2.barh(range(len(top)), top["selection_frequency"], color="#16a085")
+        ax2.set_yticks(range(len(top)))
+        ax2.set_yticklabels([f"L{int(l)}H{int(h)}" for l, h in zip(top["layer"], top["head"])], fontsize=8)
+        ax2.set_xlabel(f"selection frequency across {args.seeds} bootstrap seeds")
+        ax2.set_title("Greedy knockout robustness — how often each head is selected")
+        fig2.tight_layout(); fig2.savefig(args.out_dir / "winoqueer_greedy_selection_frequency.png", dpi=160, bbox_inches="tight"); plt.close(fig2)
+        print(f"Wrote {freq_csv}")
 
     print(f"\nWrote {curve_csv}\nWrote {png}")
     print("\nGreedy-selected heads in order:")
