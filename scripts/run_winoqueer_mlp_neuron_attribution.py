@@ -306,22 +306,24 @@ def make_plots(df, res, out_dir, n_layers, d_mlp, top_bar=25, top_scatter=40):
     fig.tight_layout(); fig.savefig(p, dpi=160, bbox_inches="tight"); plt.close(fig); paths.append(p)
 
     # 3. neuron sufficiency x necessity (density + labeled core) ------------------------
+    # The signal lives in a thin tail (99.8% of neurons are ~0); set the axes to SPAN the core
+    # overlay rather than clip to it — the near-zero bulk collapses to the origin blob.
     fig, ax = plt.subplots(figsize=(10, 8.5))
-    hb = ax.hexbin(df["suff_frac"], df["nec_frac"], gridsize=80, bins="log", cmap="Greys", mincnt=1)
+    hb = ax.hexbin(df["suff_frac"], df["nec_frac"], gridsize=120, bins="log", cmap="Greys", mincnt=1)
     fig.colorbar(hb, ax=ax, fraction=0.045, pad=0.02).set_label("log10(neuron count)")
     core = df.sort_values("core_score", ascending=False).head(top_scatter)
-    ax.scatter(core["suff_frac"], core["nec_frac"], c=core["layer"], cmap="viridis", s=42, edgecolor="white", linewidth=0.4, zorder=3)
-    for _, r in core.head(20).iterrows():
+    sc = ax.scatter(core["suff_frac"], core["nec_frac"], c=core["layer"], cmap="viridis",
+                    s=55, edgecolor="white", linewidth=0.5, zorder=3)
+    fig.colorbar(sc, ax=ax, fraction=0.045, pad=0.10).set_label("layer (of labeled core neurons)")
+    for _, r in core.head(15).iterrows():
         ax.annotate(f"L{int(r['layer'])}N{int(r['neuron'])}", (r["suff_frac"], r["nec_frac"]),
-                    xytext=(3, 2), textcoords="offset points", fontsize=8, fontweight="bold")
+                    xytext=(4, 2), textcoords="offset points", fontsize=8, fontweight="bold")
     ax.axhline(0, color="#888", lw=0.8); ax.axvline(0, color="#888", lw=0.8)
-    # clip axes to robust quantiles so a few AtP outliers don't flatten the bulk
-    xlo, xhi = df["suff_frac"].quantile([0.002, 0.998])
-    ylo, yhi = df["nec_frac"].quantile([0.002, 0.998])
-    ax.set_xlim(xlo, xhi); ax.set_ylim(ylo, yhi)
-    ax.set_xlabel("sufficiency:  inject neuron → Δ bias  (axes clipped to 0.2–99.8%)")
-    ax.set_ylabel("necessity:  remove neuron → Δ bias")
-    ax.set_title("WinoQueer MLP neurons — sufficiency × necessity (core circuit = top-right)")
+    ax.set_xlim(min(df["suff_frac"].quantile(0.01), -0.002), core["suff_frac"].max() * 1.08)
+    ax.set_ylim(min(df["nec_frac"].quantile(0.01), -0.002), core["nec_frac"].max() * 1.10)
+    ax.set_xlabel("sufficiency:  inject neuron → Δ bias  (frac of bias gap)")
+    ax.set_ylabel("necessity:  remove neuron → Δ bias  (frac of bias gap)")
+    ax.set_title("WinoQueer MLP neurons — sufficiency × necessity\n(grey = all 458k; colored = top core circuit, top-right)")
     p = out_dir / "winoqueer_mlp_suff_vs_nec.png"
     fig.tight_layout(); fig.savefig(p, dpi=160, bbox_inches="tight"); plt.close(fig); paths.append(p)
 
