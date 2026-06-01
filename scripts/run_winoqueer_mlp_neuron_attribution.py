@@ -389,7 +389,8 @@ def main() -> None:
     ap.add_argument("--tl_model_name", type=str, default="meta-llama/Llama-3.1-8B")
     ap.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
     ap.add_argument("--dtype", choices=["float16", "bfloat16", "float32"], default="float16")
-    ap.add_argument("--max_pairs", type=int, default=200)
+    ap.add_argument("--max_pairs", type=int, default=None,
+                    help="Hard cap on total pairs (applied AFTER --max_per_predicate). Default: no cap.")
     ap.add_argument("--max_per_predicate", type=int, default=None)
     ap.add_argument("--ablate_positions", choices=["all", "identity", "readout"], default="all")
     ap.add_argument("--verify_topk", type=int, default=96, help="# top neurons per direction to exact-patch (0=skip).")
@@ -403,7 +404,9 @@ def main() -> None:
     pairs = pd.read_csv(args.pairs_csv).sort_values("bias_score", ascending=False)
     if args.max_per_predicate is not None and "predicate" in pairs.columns:
         pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
-    pairs = pairs.head(args.max_pairs).reset_index(drop=True)
+    if args.max_pairs is not None:
+        pairs = pairs.head(args.max_pairs)
+    pairs = pairs.reset_index(drop=True)
     print(f"Pairs: {len(pairs)} | ablate_positions={args.ablate_positions} | verify_topk={args.verify_topk}")
 
     model, tokenizer, device = load_model(args)
