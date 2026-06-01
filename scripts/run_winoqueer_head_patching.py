@@ -46,7 +46,7 @@ from run_winoqueer_resid_patching import align_pair, continuation_logp, resolve_
 
 RAW_HEADER = [
     "pair_id", "row_id", "Gender_ID_x", "Gender_ID_y", "predicate", "predicate_label_provisional",
-    "layer", "head", "bias_effect", "attn_readout_to_identity",
+    "layer", "head", "bias_effect", "attn_readout_to_identity", "n_identity_tokens",
     "control_cont_avg_logp", "queer_cont_avg_logp", "normalized_restoration",
 ]
 
@@ -184,6 +184,7 @@ def run_head_patching(args, pairs: pd.DataFrame, raw_out_path: Path) -> pd.DataF
                         "layer": layer, "head": h,
                         "bias_effect": be,
                         "attn_readout_to_identity": float(attn_to_id[h].item()),
+                        "n_identity_tokens": int(Lx),
                         "control_cont_avg_logp": control_avg, "queer_cont_avg_logp": queer_avg,
                         "normalized_restoration": safe_norm(be, denom),
                     })
@@ -350,6 +351,9 @@ def main() -> None:
     parser.add_argument("--patch_positions", choices=["all", "identity", "readout"], default="all",
                         help="Which control positions of a head's output to replace with the queer value.")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--no_resort", action="store_true",
+                        help="Consume --pairs_csv in file order (no bias_score re-sort / per-predicate cap). "
+                             "Use with a pre-frozen cohort so pair_id == cohort row order.")
     args = parser.parse_args()
 
     started = time.perf_counter()
@@ -364,14 +368,19 @@ def main() -> None:
     else:
         if args.pairs_csv is None:
             parser.error("--pairs_csv is required unless --plot_only")
-        pairs = pd.read_csv(args.pairs_csv).sort_values("bias_score", ascending=False)
-        if args.max_per_predicate is not None and "predicate" in pairs.columns:
-            pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate)
+        pairs = pd.read_csv(args.pairs_csv)
+        if args.no_resort:
+            pairs = pairs.reset_index(drop=True)
+            print(f"Pairs: {len(pairs)} (no_resort: consuming cohort in file order)")
+        else:
             pairs = pairs.sort_values("bias_score", ascending=False)
-        if args.max_pairs is not None:
-            pairs = pairs.head(args.max_pairs)
-        pairs = pairs.reset_index(drop=True)
-        print(f"Pairs: {len(pairs)} (max_per_predicate={args.max_per_predicate}, max_pairs={args.max_pairs})")
+            if args.max_per_predicate is not None and "predicate" in pairs.columns:
+                pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate)
+                pairs = pairs.sort_values("bias_score", ascending=False)
+            if args.max_pairs is not None:
+                pairs = pairs.head(args.max_pairs)
+            pairs = pairs.reset_index(drop=True)
+            print(f"Pairs: {len(pairs)} (max_per_predicate={args.max_per_predicate}, max_pairs={args.max_pairs})")
         raw_df = run_head_patching(args, pairs, raw_path)
 
     out_paths, bias, attn, ranking = make_outputs(raw_df, args.out_dir)

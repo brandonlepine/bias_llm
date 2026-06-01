@@ -314,6 +314,9 @@ def main() -> None:
     parser.add_argument("--cumulative_max_pairs", type=int, default=300)
     parser.add_argument("--cumulative_max_heads", type=int, default=30)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--no_resort", action="store_true",
+                        help="Consume --pairs_csv in file order (no bias_score re-sort / per-predicate cap). "
+                             "Use with a pre-frozen cohort so pair_id == cohort row order.")
     args = parser.parse_args()
 
     started = time.perf_counter()
@@ -329,13 +332,18 @@ def main() -> None:
     else:
         if args.pairs_csv is None:
             parser.error("--pairs_csv required unless --plot_only")
-        pairs = pd.read_csv(args.pairs_csv).sort_values("bias_score", ascending=False)
-        if args.max_per_predicate is not None and "predicate" in pairs.columns:
-            pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
-        if args.max_pairs is not None:
-            pairs = pairs.head(args.max_pairs)
-        pairs = pairs.reset_index(drop=True)
-        print(f"Pairs: {len(pairs)} (ablate_positions={args.ablate_positions})")
+        pairs = pd.read_csv(args.pairs_csv)
+        if args.no_resort:
+            pairs = pairs.reset_index(drop=True)
+            print(f"Pairs: {len(pairs)} (no_resort: consuming cohort in file order; ablate_positions={args.ablate_positions})")
+        else:
+            pairs = pairs.sort_values("bias_score", ascending=False)
+            if args.max_per_predicate is not None and "predicate" in pairs.columns:
+                pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
+            if args.max_pairs is not None:
+                pairs = pairs.head(args.max_pairs)
+            pairs = pairs.reset_index(drop=True)
+            print(f"Pairs: {len(pairs)} (ablate_positions={args.ablate_positions})")
         model, tokenizer, device = load_model(args)
 
         raw_df = run_single_head_ablation(args, model, tokenizer, device, pairs, raw_path)
