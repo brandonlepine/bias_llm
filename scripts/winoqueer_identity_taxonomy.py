@@ -112,6 +112,45 @@ def add_group_keys(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+# ----------------------------------------------------------------------------- presentation
+# Axis-ordered identities + a consistent palette, shared by every segmented-analysis figure.
+IDENTITY_ORDER = ["Asexual", "Bisexual", "Gay", "Lesbian", "Pansexual", "Transgender", "NB", "Queer", "LGBTQ"]
+AXIS_COLORS = {"sexual_orientation": "#1f78b4", "gender_identity": "#e31a1c", "umbrella": "#6a3d9a"}
+AXIS_SHORT = {"sexual_orientation": "orientation", "gender_identity": "gender", "umbrella": "umbrella"}
+
+
+def pub_style():
+    """Apply a clean, publication-oriented matplotlib style (idempotent)."""
+    import matplotlib as mpl
+    mpl.rcParams.update({
+        "figure.dpi": 120, "savefig.dpi": 200, "savefig.bbox": "tight", "figure.facecolor": "white",
+        "font.size": 11, "axes.titlesize": 13, "axes.titleweight": "bold", "axes.labelsize": 10.5,
+        "axes.spines.top": False, "axes.spines.right": False, "axes.edgecolor": "#444", "axes.linewidth": 0.8,
+        "xtick.labelsize": 9, "ytick.labelsize": 9, "legend.fontsize": 8.5,
+    })
+
+
+def ordered_present(values) -> list[str]:
+    """Identities present in `values`, in canonical axis order."""
+    s = set(values)
+    return [i for i in IDENTITY_ORDER if i in s]
+
+
+def axis_separators(ids: list[str]) -> list[int]:
+    """Column indices where the axis changes (for drawing separators between axis blocks)."""
+    a = [IDENTITY_AXIS.get(i) for i in ids]
+    return [i for i in range(1, len(ids)) if a[i] != a[i - 1]]
+
+
+def color_ticklabels(ax, ids, axis: str = "x"):
+    """Color tick labels by their identity's axis."""
+    labs = ax.get_xticklabels() if axis == "x" else ax.get_yticklabels()
+    for t, c in zip(labs, ids):
+        if c in IDENTITY_AXIS:
+            t.set_color(AXIS_COLORS[IDENTITY_AXIS[c]])
+            t.set_fontweight("bold")
+
+
 # ----------------------------------------------------------------------------- statistics
 def eb_shrink(means: np.ndarray, ns: np.ndarray, grand_mean: float, k: float | None = None) -> np.ndarray:
     """Empirical-Bayes shrinkage of per-group means toward the grand mean.

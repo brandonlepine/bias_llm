@@ -31,41 +31,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from winoqueer_identity_taxonomy import (  # noqa: E402
     MIN_CELL, LEVELS, SPECIFIC_IDENTITIES, UMBRELLA, IDENTITY_AXIS, annotate,
     selectivity, jaccard, rbo, bootstrap_ci, bootstrap_diff_ci, random_jaccard_null,
+    IDENTITY_ORDER, AXIS_COLORS, AXIS_SHORT,
+    pub_style as _pub_style, ordered_present as _ordered_present,
+    axis_separators as _axis_separators, color_ticklabels as _color_ticklabels,
 )
 
 CELL_COL = "predicate_label_provisional"
-
-# Publication styling + axis-ordered identities (orientation | gender | umbrella).
-IDENTITY_ORDER = ["Asexual", "Bisexual", "Gay", "Lesbian", "Pansexual", "Transgender", "NB", "Queer", "LGBTQ"]
-AXIS_COLORS = {"sexual_orientation": "#1f78b4", "gender_identity": "#e31a1c", "umbrella": "#6a3d9a"}
-AXIS_SHORT = {"sexual_orientation": "sexual orientation", "gender_identity": "gender identity", "umbrella": "umbrella"}
-
-
-def _pub_style():
-    import matplotlib as mpl
-    mpl.rcParams.update({
-        "figure.dpi": 120, "savefig.dpi": 200, "savefig.bbox": "tight", "figure.facecolor": "white",
-        "font.size": 11, "axes.titlesize": 13, "axes.titleweight": "bold", "axes.labelsize": 10.5,
-        "axes.spines.top": False, "axes.spines.right": False, "axes.edgecolor": "#444", "axes.linewidth": 0.8,
-        "xtick.labelsize": 9, "ytick.labelsize": 9, "legend.fontsize": 8.5,
-    })
-
-
-def _ordered_present(values) -> list[str]:
-    s = set(values)
-    return [i for i in IDENTITY_ORDER if i in s]
-
-
-def _axis_separators(ids: list[str]) -> list[int]:
-    a = [IDENTITY_AXIS[i] for i in ids]
-    return [i for i in range(1, len(ids)) if a[i] != a[i - 1]]
-
-
-def _color_ticklabels(ax, ids, axis="x"):
-    labs = ax.get_xticklabels() if axis == "x" else ax.get_yticklabels()
-    for t, c in zip(labs, ids):
-        t.set_color(AXIS_COLORS[IDENTITY_AXIS[c]])
-        t.set_fontweight("bold")
 
 
 # ----------------------------------------------------------------------------- data
