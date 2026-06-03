@@ -1,0 +1,380 @@
+axis,block,Group_x,predicate_label_provisional,n_kept
+age,age,80,CROWS,1
+age,age,College students,CROWS,1
+age,age,Sam was,CROWS,1
+age,age,advanced,CROWS,1
+age,age,grandmother,CROWS,1
+age,age,little boy,CROWS,1
+age,age,man,CROWS,1
+age,age,millenial,CROWS,1
+age,age,millenials,CROWS,1
+age,age,old,CROWS,3
+age,age,th,CROWS,1
+age,age,young,CROWS,6
+age,old,old,CROWS,16
+age,old,old,Inability to use technology?,26
+age,old,old,Physical weakness,26
+age,old,old,cognitive ability/memory,48
+age,old,old,creative ability,26
+age,old,old,hearing ability,24
+age,old,old,ignorance,26
+age,old,old,memory loss,48
+age,old,old,out of touch,26
+age,old,old,resistance to change,26
+age,old,old,stubbornness,24
+age,old,old,unattractive,26
+age,young,young,CROWS,4
+age,young,young,binge drinking,52
+age,young,young,irresponsible,24
+age,young,young,recklessness,48
+age,young,young,risk-taking,48
+disability,autistic,autistic,empathy,14
+disability,autistic,autistic,unfriendly/anti-social,52
+disability,blind,blind,having a job,22
+disability,blind,blind,independence,22
+disability,deaf,deaf,career success,52
+disability,deaf,deaf,people who are dangerous drivers,26
+disability,disability,Psychotic kids,CROWS,1
+disability,disability,agoraphobia,CROWS,1
+disability,disability,alcoholic,CROWS,1
+disability,disability,autistic,CROWS,1
+disability,disability,cerebral palsy,CROWS,1
+disability,disability,crippled,CROWS,1
+disability,disability,demented,CROWS,1
+disability,disability,disabled,CROWS,8
+disability,disability,disorder,CROWS,1
+disability,disability,mentally ill,CROWS,4
+disability,disability,stupid,CROWS,1
+disability,disability,with,CROWS,5
+disability,disabled,disabled,CROWS,1
+disability,mentally ill,mentally ill,people who are responsible for violence,26
+disability,mentally ill,mentally ill,violence,26
+disability,physically disabled,physically disabled,good co-worker,18
+disability,physically disabled,physically disabled,productivity,44
+disability,physically disabled,physically disabled,romantic interest,18
+disability,physically disabled,physically disabled,work ethic,20
+gender,a man,a man,"ability to do a specific career; the ""feminization"" of specific careers",30
+gender,a man,a man,abuser,60
+gender,a man,a man,"emotional closedness, lack of empathy",52
+gender,a man,a man,violence,36
+gender,a transgender man,a transgender man,mental health,50
+gender,a transgender woman,a transgender woman,mental health,65
+gender,a woman,a woman,STEM skills,48
+gender,a woman,a woman,abuse_victim,20
+gender,a woman,a woman,emotional,48
+gender,a woman,a woman,family responsibility,24
+gender,a woman,a woman,gendered occupation,70
+gender,a woman,a woman,math ability,50
+gender,gender,Bob,CROWS,1
+gender,gender,Camille,CROWS,1
+gender,gender,Carrie,CROWS,1
+gender,gender,Cathy,CROWS,1
+gender,gender,Emily,CROWS,1
+gender,gender,Greta,CROWS,1
+gender,gender,Jeff,CROWS,1
+gender,gender,Jenny,CROWS,1
+gender,gender,Joe,CROWS,1
+gender,gender,Kassandra,CROWS,1
+gender,gender,Lara,CROWS,1
+gender,gender,Marie,CROWS,1
+gender,gender,Mary,CROWS,1
+gender,gender,Susan,CROWS,1
+gender,gender,Thomas,CROWS,1
+gender,gender,man,CROWS,1
+gender,gender,transgender,CROWS,2
+gender,gender,uncle,CROWS,1
+gender,gender,wife,CROWS,2
+gender,man,man,CROWS,6
+gender,woman,woman,CROWS,23
+nationality,East/SE Asian,Burmese,submissiveness,12
+nationality,East/SE Asian,Chinese,parental pressure,11
+nationality,East/SE Asian,Chinese,submissiveness,10
+nationality,East/SE Asian,Indonesian,submissiveness,6
+nationality,East/SE Asian,Japanese,parental pressure,10
+nationality,East/SE Asian,Japanese,submissiveness,18
+nationality,East/SE Asian,Korean,parental pressure,10
+nationality,East/SE Asian,Korean,submissiveness,10
+nationality,East/SE Asian,Thai,submissiveness,14
+nationality,East/SE Asian,Vietnamese,submissiveness,10
+nationality,MENA,Afghan,terrorism,11
+nationality,MENA,Afghan,violence towards women,14
+nationality,MENA,Afghan,violence/terrorism,9
+nationality,MENA,Iranian,terrorism,7
+nationality,MENA,Iranian,violence towards women,10
+nationality,MENA,Iranian,violence/terrorism,9
+nationality,MENA,Iraqi,terrorism,11
+nationality,MENA,Iraqi,violence towards women,10
+nationality,MENA,Iraqi,violence/terrorism,11
+nationality,MENA,Libyan,terrorism,10
+nationality,MENA,Libyan,violence towards women,6
+nationality,MENA,Libyan,violence/terrorism,11
+nationality,MENA,Moroccan,violence towards women,6
+nationality,MENA,Palestinian,terrorism,12
+nationality,MENA,Palestinian,violence towards women,6
+nationality,MENA,Palestinian,violence/terrorism,11
+nationality,MENA,Saudi,terrorism,9
+nationality,MENA,Saudi,violence towards women,14
+nationality,MENA,Saudi,violence/terrorism,10
+nationality,MENA,Syrian,terrorism,10
+nationality,MENA,Syrian,violence towards women,6
+nationality,MENA,Syrian,violence/terrorism,8
+nationality,MENA,Yemeni,terrorism,10
+nationality,MENA,Yemeni,violence towards women,8
+nationality,MENA,Yemeni,violence/terrorism,11
+nationality,South Asian,Indian,bad odour,16
+nationality,South Asian,Indian,parental pressure,8
+nationality,Sub-Saharan African,Eritrean,lack of access to technology,9
+nationality,Sub-Saharan African,Eritrean,poverty,12
+nationality,Sub-Saharan African,Ethiopian,lack of access to technology,10
+nationality,Sub-Saharan African,Ethiopian,poverty,6
+nationality,Sub-Saharan African,Guinean,lack of access to technology,11
+nationality,Sub-Saharan African,Guinean,poverty,12
+nationality,Sub-Saharan African,Kenyan,lack of access to technology,10
+nationality,Sub-Saharan African,Kenyan,poverty,14
+nationality,Sub-Saharan African,Malian,lack of access to technology,11
+nationality,Sub-Saharan African,Malian,poverty,18
+nationality,Sub-Saharan African,Mozambican,lack of access to technology,12
+nationality,Sub-Saharan African,Mozambican,poverty,9
+nationality,Sub-Saharan African,Namibian,lack of access to technology,7
+nationality,Sub-Saharan African,Nigerian,committing fraud,26
+nationality,Sub-Saharan African,Nigerian,lack of access to technology,10
+nationality,Sub-Saharan African,Nigerian,poverty,9
+nationality,Western,British,unruly/anti-social behaviour,15
+nationality,Western,Irish,alcoholism,24
+nationality,Western,Italian,links to organised crime,10
+nationality,nationality,A Chinese,CROWS,1
+nationality,nationality,Africa,CROWS,1
+nationality,nationality,African,CROWS,1
+nationality,nationality,American man,CROWS,1
+nationality,nationality,Americans,CROWS,1
+nationality,nationality,Amish,CROWS,1
+nationality,nationality,Arab,CROWS,2
+nationality,nationality,Asian,CROWS,4
+nationality,nationality,Asians,CROWS,1
+nationality,nationality,Carlos Prez,CROWS,1
+nationality,nationality,China,CROWS,1
+nationality,nationality,Chinese,CROWS,4
+nationality,nationality,England,CROWS,1
+nationality,nationality,Eskimo,CROWS,1
+nationality,nationality,German,CROWS,1
+nationality,nationality,Greek,CROWS,1
+nationality,nationality,Gypsys,CROWS,1
+nationality,nationality,Immigrants,CROWS,1
+nationality,nationality,Indian,CROWS,2
+nationality,nationality,Italian,CROWS,6
+nationality,nationality,Italians,CROWS,2
+nationality,nationality,Italy,CROWS,1
+nationality,nationality,Japanese,CROWS,1
+nationality,nationality,Jorge and his,CROWS,1
+nationality,nationality,Korean,CROWS,1
+nationality,nationality,Latino,CROWS,1
+nationality,nationality,Mexians,CROWS,1
+nationality,nationality,Mexican,CROWS,9
+nationality,nationality,Mexicans,CROWS,4
+nationality,nationality,Mexico,CROWS,3
+nationality,nationality,Mexicos the best,CROWS,1
+nationality,nationality,Middle Eastern,CROWS,2
+nationality,nationality,Middle Easterners,CROWS,1
+nationality,nationality,Mississippi,CROWS,1
+nationality,nationality,Native Americans,CROWS,1
+nationality,nationality,Roma Gypsy,CROWS,1
+nationality,nationality,Russian,CROWS,1
+nationality,nationality,Sergey,CROWS,1
+nationality,nationality,Southern,CROWS,1
+nationality,nationality,Syria,CROWS,1
+nationality,nationality,a Mexican,CROWS,1
+nationality,nationality,an Italian,CROWS,1
+nationality,nationality,foreigners,CROWS,1
+nationality,nationality,gypsy,CROWS,1
+nationality,nationality,hispanic,CROWS,1
+nationality,nationality,illegal immigrants,CROWS,2
+nationality,nationality,illegals,CROWS,1
+nationality,nationality,immigrant,CROWS,1
+nationality,nationality,immigrants,CROWS,3
+physical_appearance,badly dressed,badly dressed,competence,26
+physical_appearance,badly dressed,badly dressed,criminality,26
+physical_appearance,badly dressed,badly dressed,criminality; violence,48
+physical_appearance,badly dressed,badly dressed,homelessness; low SES,26
+physical_appearance,badly dressed,badly dressed,leadership abilities; competence,52
+physical_appearance,badly dressed,badly dressed,partying lifestyle,20
+physical_appearance,badly dressed,badly dressed,professional appearance and behavior,26
+physical_appearance,badly dressed,badly dressed,substance abuse,24
+physical_appearance,obese,obese,CROWS,6
+physical_appearance,obese,obese,diet failure,52
+physical_appearance,obese,obese,lazy,16
+physical_appearance,obese,obese,unhealthy,24
+physical_appearance,obese,obese,unintelligent,18
+physical_appearance,physical_appearance,hunchback,CROWS,1
+physical_appearance,physical_appearance,obese,CROWS,12
+physical_appearance,physical_appearance,of average height,CROWS,1
+physical_appearance,physical_appearance,plumber,CROWS,1
+physical_appearance,physical_appearance,small,CROWS,1
+physical_appearance,physical_appearance,tall,CROWS,1
+physical_appearance,physical_appearance,trim,CROWS,1
+physical_appearance,physical_appearance,unattractive,CROWS,3
+physical_appearance,pregnant,pregnant,ability to work,52
+physical_appearance,short,short,CROWS,2
+physical_appearance,short,short,competence,48
+physical_appearance,short,short,height,32
+race,Asian,Asian,CROWS,5
+race,Asian,Asian,driving ability,24
+race,Asian,Asian,"hypersexuality, prostitution",14
+race,Asian,Asian,"meekness, docility, submissiveness",16
+race,Black,Black,CROWS,80
+race,Black,Black,college admissions bias,12
+race,Black,Black,criminality,26
+race,Black,Black,drug use,28
+race,Black,Black,intelligence,12
+race,Hispanic,Hispanic,CROWS,6
+race,Hispanic,Hispanic,illegal immigration,9
+race,Hispanic,Hispanic,"othering, illegal immigration",18
+race,Jewish,Jewish,CROWS,2
+race,Middle Eastern,Middle Eastern,lack of women's rights,40
+race,Native American,Native American,CROWS,2
+race,Native American,Native American,alcoholism,14
+race,White,White,CROWS,2
+race,race,Afro-American,CROWS,1
+race,race,American Indians,CROWS,1
+race,race,Asian,CROWS,2
+race,race,Black,CROWS,4
+race,race,Chinese,CROWS,3
+race,race,Chong Ling,CROWS,1
+race,race,Davis,CROWS,1
+race,race,DeAndre,CROWS,1
+race,race,DeShawn,CROWS,2
+race,race,DeShawns,CROWS,1
+race,race,Hispanic,CROWS,10
+race,race,Indian,CROWS,1
+race,race,Indians,CROWS,2
+race,race,Jaleels,CROWS,1
+race,race,Jamal,CROWS,8
+race,race,Jamal Jackson,CROWS,1
+race,race,James,CROWS,1
+race,race,Jose,CROWS,3
+race,race,Juan Martinez,CROWS,1
+race,race,Juans,CROWS,1
+race,race,Julius,CROWS,1
+race,race,Laquisha,CROWS,1
+race,race,LeBron,CROWS,2
+race,race,LeShawn,CROWS,1
+race,race,Manuel,CROWS,1
+race,race,Micheal,CROWS,3
+race,race,Mike,CROWS,1
+race,race,Ming,CROWS,1
+race,race,Minority,CROWS,1
+race,race,Native,CROWS,1
+race,race,Native American,CROWS,2
+race,race,Rajeev,CROWS,1
+race,race,Shaniqua,CROWS,4
+race,race,Shevon,CROWS,1
+race,race,Terrance,CROWS,2
+race,race,Terrell,CROWS,1
+race,race,Thomas,CROWS,1
+race,race,Tyrone,CROWS,2
+race,race,Tyrone was excited,CROWS,1
+race,race,Tyrones criminal,CROWS,1
+race,race,Wang,CROWS,1
+race,race,Won Lee,CROWS,1
+race,race,colored,CROWS,1
+race,race,dark-skinned,CROWS,1
+race,race,young Afro,CROWS,1
+religion,Atheist,Atheist,CROWS,2
+religion,Atheist,Atheist,morality,26
+religion,Atheist,Atheist,trustworthiness,12
+religion,Catholic,Catholic,abuse by priests,16
+religion,Catholic,Catholic,misogyny,10
+religion,Christian,Christian,CROWS,3
+religion,Hindu,Hindu,CROWS,1
+religion,Hindu,Hindu,animal sacrifice,13
+religion,Hindu,Hindu,idol worship,24
+religion,Jewish,Jewish,CROWS,19
+religion,Jewish,Jewish,control banks,13
+religion,Jewish,Jewish,dual loyalty,12
+religion,Mormon,Mormon,polygamy,26
+religion,Muslim,Muslim,CROWS,16
+religion,Muslim,Muslim,misogyny,14
+religion,Muslim,Muslim,religious extremism,12
+religion,Muslim,Muslim,violence,15
+religion,religion,Amish,CROWS,1
+religion,religion,Arabic,CROWS,1
+religion,religion,Buddhist,CROWS,1
+religion,religion,Christian,CROWS,1
+religion,religion,Hindu,CROWS,1
+religion,religion,Jewish,CROWS,7
+religion,religion,Mohammad,CROWS,1
+religion,religion,Mohammads,CROWS,1
+religion,religion,Muslim,CROWS,3
+religion,religion,Navajo Indians strongly,CROWS,1
+religion,religion,Quran,CROWS,1
+religion,religion,Wiccan,CROWS,2
+religion,religion,head scarfs,CROWS,1
+religion,religion,mosque,CROWS,1
+religion,religion,wiccan,CROWS,1
+sexual_orientation,bisexual,bisexual,indecisiveness about sexuality,24
+sexual_orientation,bisexual,bisexual,promiscuity,10
+sexual_orientation,bisexual,bisexual,"promiscuity, infidelity",33
+sexual_orientation,gay,gay,CROWS,23
+sexual_orientation,gay,gay,child raising,26
+sexual_orientation,gay,gay,emotional connection,20
+sexual_orientation,gay,gay,family problems,13
+sexual_orientation,gay,gay,health,26
+sexual_orientation,gay,gay,pedophilia,12
+sexual_orientation,gay,gay,sexual aggression,8
+sexual_orientation,gay,gay,stereotyped interests of gay men,10
+sexual_orientation,gay,gay,stereotypical interests according to gender identity,7
+sexual_orientation,lesbian,lesbian,appearance and clothing choices,9
+sexual_orientation,lesbian,lesbian,appropriate steps in a romantic relationship,16
+sexual_orientation,lesbian,lesbian,emotional connection,12
+sexual_orientation,lesbian,lesbian,family problems,12
+sexual_orientation,pansexual,pansexual,afraid of commitment,12
+sexual_orientation,sexual_orientation,Being heterosexual,CROWS,1
+sexual_orientation,sexual_orientation,gay,CROWS,5
+sexual_orientation,sexual_orientation,hairdresser,CROWS,1
+sexual_orientation,sexual_orientation,lesbian,CROWS,2
+sexual_orientation,sexual_orientation,more,CROWS,1
+sexual_orientation,sexual_orientation,uncles have,CROWS,1
+socioeconomic,poor,poor,CROWS,29
+socioeconomic,poor,poor,academic achievement,77
+socioeconomic,poor,poor,"academic achievement, drug use",18
+socioeconomic,poor,poor,bad parenting,21
+socioeconomic,poor,poor,drug use,66
+socioeconomic,poor,poor,educational achievement,26
+socioeconomic,poor,poor,incompetence,35
+socioeconomic,poor,poor,intelligence,28
+socioeconomic,poor,poor,language,39
+socioeconomic,poor,poor,valuing education; bad parents,24
+socioeconomic,socioeconomic,Mexican,CROWS,1
+socioeconomic,socioeconomic,a trailer park,CROWS,1
+socioeconomic,socioeconomic,and never,CROWS,1
+socioeconomic,socioeconomic,broken student,CROWS,1
+socioeconomic,socioeconomic,business man,CROWS,1
+socioeconomic,socioeconomic,celebrities,CROWS,1
+socioeconomic,socioeconomic,clown,CROWS,1
+socioeconomic,socioeconomic,considerable,CROWS,1
+socioeconomic,socioeconomic,construction worker,CROWS,1
+socioeconomic,socioeconomic,contract worker,CROWS,1
+socioeconomic,socioeconomic,cops,CROWS,1
+socioeconomic,socioeconomic,couldnt,CROWS,1
+socioeconomic,socioeconomic,doctor,CROWS,1
+socioeconomic,socioeconomic,dont have,CROWS,1
+socioeconomic,socioeconomic,fashion model,CROWS,1
+socioeconomic,socioeconomic,few,CROWS,1
+socioeconomic,socioeconomic,fisherman,CROWS,1
+socioeconomic,socioeconomic,garbage man,CROWS,1
+socioeconomic,socioeconomic,ghetto,CROWS,1
+socioeconomic,socioeconomic,grateful,CROWS,1
+socioeconomic,socioeconomic,hillbillies,CROWS,1
+socioeconomic,socioeconomic,janitor,CROWS,1
+socioeconomic,socioeconomic,janitors,CROWS,1
+socioeconomic,socioeconomic,lawyer,CROWS,2
+socioeconomic,socioeconomic,low,CROWS,2
+socioeconomic,socioeconomic,mother,CROWS,1
+socioeconomic,socioeconomic,motorcycle gang,CROWS,1
+socioeconomic,socioeconomic,poor,CROWS,12
+socioeconomic,socioeconomic,private,CROWS,1
+socioeconomic,socioeconomic,prostitutes,CROWS,1
+socioeconomic,socioeconomic,ramshackle,CROWS,1
+socioeconomic,socioeconomic,secretary,CROWS,1
+socioeconomic,socioeconomic,successful businessman,CROWS,1
+socioeconomic,socioeconomic,the projects,CROWS,1
+socioeconomic,socioeconomic,uneducated,CROWS,2
