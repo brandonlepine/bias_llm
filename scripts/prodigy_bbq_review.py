@@ -18,18 +18,13 @@ Then export your decisions for apply_bbq_review.py:
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import prodigy
 from prodigy.components.stream import get_stream
 
-
-HELP = (
-    "Review each stereotype PAIR once (it covers all names + both frames).\n"
-    "Pick one action, optionally type a corrected predicate / note, then press the green ✓ to save.\n"
-    "  • Approve — the pair is a valid, clean stereotype contrast\n"
-    "  • Reject — drop it (not a real stereotype, ungrammatical, wrong groups)\n"
-    "  • Mark for review — unsure / revisit later\n"
-    "  • Mark for edit — keep the stereotype but fix the predicate (type the fix in the box)"
-)
+# Prodigy's `instructions` config wants a PATH to an HTML file (not inline text).
+INSTRUCTIONS = str(Path(__file__).resolve().parent / "bbq_review_instructions.html")
 
 
 @prodigy.recipe(
@@ -55,7 +50,7 @@ def bbq_review(dataset: str, source: str):
             "choice_style": "single",
             "choice_auto_accept": False,
             "buttons": ["accept", "undo"],
-            "instructions": HELP,
+            "instructions": INSTRUCTIONS,
             "show_flag": True,
             "global_css": ".prodigy-content{max-width:760px;}",
         },
