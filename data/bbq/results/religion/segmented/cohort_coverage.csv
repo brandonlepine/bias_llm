@@ -1,13 +1,13 @@
 axis,block,Group_x,predicate_label_provisional,n_kept
-religion,Atheist,Atheist,morality,14
-religion,Atheist,Atheist,trustworthiness,7
-religion,Catholic,Catholic,abuse by priests,14
+religion,Atheist,Atheist,morality,26
+religion,Atheist,Atheist,trustworthiness,12
+religion,Catholic,Catholic,abuse by priests,16
 religion,Catholic,Catholic,misogyny,10
-religion,Hindu,Hindu,animal sacrifice,7
-religion,Hindu,Hindu,idol worship,12
-religion,Jewish,Jewish,control banks,7
-religion,Jewish,Jewish,dual loyalty,7
-religion,Mormon,Mormon,polygamy,14
+religion,Hindu,Hindu,animal sacrifice,13
+religion,Hindu,Hindu,idol worship,24
+religion,Jewish,Jewish,control banks,13
+religion,Jewish,Jewish,dual loyalty,12
+religion,Mormon,Mormon,polygamy,26
 religion,Muslim,Muslim,misogyny,14
-religion,Muslim,Muslim,religious extremism,7
+religion,Muslim,Muslim,religious extremism,12
 religion,Muslim,Muslim,violence,15

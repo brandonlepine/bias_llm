@@ -1,57 +1,57 @@
 axis,block,Group_x,predicate_label_provisional,n_kept
-nationality,East/SE Asian,Burmese,submissiveness,10
-nationality,East/SE Asian,Chinese,parental pressure,5
-nationality,East/SE Asian,Chinese,submissiveness,10
-nationality,East/SE Asian,Indonesian,submissiveness,4
-nationality,East/SE Asian,Japanese,parental pressure,5
-nationality,East/SE Asian,Japanese,submissiveness,10
-nationality,East/SE Asian,Korean,parental pressure,4
-nationality,East/SE Asian,Korean,submissiveness,10
-nationality,East/SE Asian,Thai,submissiveness,10
-nationality,East/SE Asian,Vietnamese,submissiveness,6
-nationality,MENA,Afghan,terrorism,6
+nationality,East/SE Asian,Burmese,submissiveness,8
+nationality,East/SE Asian,Chinese,parental pressure,11
+nationality,East/SE Asian,Chinese,submissiveness,4
+nationality,East/SE Asian,Indonesian,submissiveness,6
+nationality,East/SE Asian,Japanese,parental pressure,10
+nationality,East/SE Asian,Japanese,submissiveness,14
+nationality,East/SE Asian,Korean,parental pressure,10
+nationality,East/SE Asian,Korean,submissiveness,8
+nationality,East/SE Asian,Thai,submissiveness,12
+nationality,East/SE Asian,Vietnamese,submissiveness,8
+nationality,MENA,Afghan,terrorism,8
 nationality,MENA,Afghan,violence towards women,12
-nationality,MENA,Afghan,violence/terrorism,7
-nationality,MENA,Iranian,terrorism,7
+nationality,MENA,Afghan,violence/terrorism,8
+nationality,MENA,Iranian,terrorism,4
 nationality,MENA,Iranian,violence towards women,6
-nationality,MENA,Iranian,violence/terrorism,7
-nationality,MENA,Iraqi,terrorism,7
+nationality,MENA,Iranian,violence/terrorism,6
+nationality,MENA,Iraqi,terrorism,10
 nationality,MENA,Iraqi,violence towards women,10
-nationality,MENA,Iraqi,violence/terrorism,7
-nationality,MENA,Libyan,terrorism,6
+nationality,MENA,Iraqi,violence/terrorism,9
+nationality,MENA,Libyan,terrorism,8
 nationality,MENA,Libyan,violence towards women,4
 nationality,MENA,Libyan,violence/terrorism,7
 nationality,MENA,Moroccan,violence towards women,2
-nationality,MENA,Palestinian,terrorism,7
+nationality,MENA,Palestinian,terrorism,9
 nationality,MENA,Palestinian,violence towards women,6
-nationality,MENA,Palestinian,violence/terrorism,7
-nationality,MENA,Saudi,terrorism,7
+nationality,MENA,Palestinian,violence/terrorism,9
+nationality,MENA,Saudi,terrorism,6
 nationality,MENA,Saudi,violence towards women,8
-nationality,MENA,Saudi,violence/terrorism,7
-nationality,MENA,Syrian,terrorism,7
+nationality,MENA,Saudi,violence/terrorism,8
+nationality,MENA,Syrian,terrorism,6
 nationality,MENA,Syrian,violence towards women,6
-nationality,MENA,Syrian,violence/terrorism,7
-nationality,MENA,Yemeni,terrorism,6
+nationality,MENA,Syrian,violence/terrorism,5
+nationality,MENA,Yemeni,terrorism,9
 nationality,MENA,Yemeni,violence towards women,6
-nationality,MENA,Yemeni,violence/terrorism,7
-nationality,South Asian,Indian,bad odour,10
-nationality,South Asian,Indian,parental pressure,5
-nationality,Sub-Saharan African,Eritrean,lack of access to technology,6
+nationality,MENA,Yemeni,violence/terrorism,8
+nationality,South Asian,Indian,bad odour,16
+nationality,South Asian,Indian,parental pressure,8
+nationality,Sub-Saharan African,Eritrean,lack of access to technology,8
 nationality,Sub-Saharan African,Eritrean,poverty,6
 nationality,Sub-Saharan African,Ethiopian,lack of access to technology,7
 nationality,Sub-Saharan African,Ethiopian,poverty,6
-nationality,Sub-Saharan African,Guinean,lack of access to technology,7
-nationality,Sub-Saharan African,Guinean,poverty,9
-nationality,Sub-Saharan African,Kenyan,lack of access to technology,7
+nationality,Sub-Saharan African,Guinean,lack of access to technology,8
+nationality,Sub-Saharan African,Guinean,poverty,6
+nationality,Sub-Saharan African,Kenyan,lack of access to technology,9
 nationality,Sub-Saharan African,Kenyan,poverty,12
-nationality,Sub-Saharan African,Malian,lack of access to technology,7
-nationality,Sub-Saharan African,Malian,poverty,12
-nationality,Sub-Saharan African,Mozambican,lack of access to technology,7
+nationality,Sub-Saharan African,Malian,lack of access to technology,6
+nationality,Sub-Saharan African,Malian,poverty,15
+nationality,Sub-Saharan African,Mozambican,lack of access to technology,8
 nationality,Sub-Saharan African,Mozambican,poverty,9
-nationality,Sub-Saharan African,Namibian,lack of access to technology,7
-nationality,Sub-Saharan African,Nigerian,committing fraud,14
-nationality,Sub-Saharan African,Nigerian,lack of access to technology,7
+nationality,Sub-Saharan African,Namibian,lack of access to technology,6
+nationality,Sub-Saharan African,Nigerian,committing fraud,26
+nationality,Sub-Saharan African,Nigerian,lack of access to technology,8
 nationality,Sub-Saharan African,Nigerian,poverty,6
-nationality,Western,British,unruly/anti-social behaviour,12
-nationality,Western,Irish,alcoholism,14
-nationality,Western,Italian,links to organised crime,6
+nationality,Western,British,unruly/anti-social behaviour,15
+nationality,Western,Irish,alcoholism,24
+nationality,Western,Italian,links to organised crime,10

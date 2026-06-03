@@ -1,10 +1,10 @@
 axis,block,Group_x,predicate_label_provisional,n_kept
-socioeconomic,poor,poor,academic achievement,35
-socioeconomic,poor,poor,"academic achievement, drug use",6
-socioeconomic,poor,poor,bad parenting,12
-socioeconomic,poor,poor,drug use,30
-socioeconomic,poor,poor,educational achievement,14
-socioeconomic,poor,poor,incompetence,20
-socioeconomic,poor,poor,intelligence,16
-socioeconomic,poor,poor,language,21
-socioeconomic,poor,poor,valuing education; bad parents,18
+socioeconomic,poor,poor,academic achievement,60
+socioeconomic,poor,poor,"academic achievement, drug use",18
+socioeconomic,poor,poor,bad parenting,21
+socioeconomic,poor,poor,drug use,60
+socioeconomic,poor,poor,educational achievement,26
+socioeconomic,poor,poor,incompetence,35
+socioeconomic,poor,poor,intelligence,28
+socioeconomic,poor,poor,language,39
+socioeconomic,poor,poor,valuing education; bad parents,24
