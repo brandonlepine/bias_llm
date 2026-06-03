@@ -468,6 +468,9 @@ def main() -> None:
     parser.add_argument("--trim_dead", action="store_true",
                         help="Trim structurally-zero scaffold columns from per-pair plots. Default: show the full sentence.")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--no_resort", action="store_true",
+                        help="Consume --pairs_csv in file order (no bias_score re-sort / per-predicate cap). "
+                             "Use with a pre-frozen cohort so pair_id == cohort row order.")
     args = parser.parse_args()
 
     started = time.perf_counter()
@@ -482,16 +485,21 @@ def main() -> None:
     else:
         if args.pairs_csv is None:
             parser.error("--pairs_csv is required unless --plot_only is set")
-        pairs = pd.read_csv(args.pairs_csv).sort_values("bias_score", ascending=False)
-        if args.max_per_predicate is not None and "predicate" in pairs.columns:
-            pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate)
+        pairs = pd.read_csv(args.pairs_csv)
+        if args.no_resort:
+            pairs = pairs.reset_index(drop=True)
+            print(f"Pairs: {len(pairs)} (no_resort: consuming cohort in file order)")
+        else:
             pairs = pairs.sort_values("bias_score", ascending=False)
-        if args.max_pairs is not None:
-            pairs = pairs.head(args.max_pairs)
-        pairs = pairs.reset_index(drop=True)
-        n_pred = pairs["predicate"].nunique() if "predicate" in pairs.columns else "?"
-        print(f"Pairs: {len(pairs)} across {n_pred} predicates "
-              f"(max_per_predicate={args.max_per_predicate}, max_pairs={args.max_pairs})")
+            if args.max_per_predicate is not None and "predicate" in pairs.columns:
+                pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate)
+                pairs = pairs.sort_values("bias_score", ascending=False)
+            if args.max_pairs is not None:
+                pairs = pairs.head(args.max_pairs)
+            pairs = pairs.reset_index(drop=True)
+            n_pred = pairs["predicate"].nunique() if "predicate" in pairs.columns else "?"
+            print(f"Pairs: {len(pairs)} across {n_pred} predicates "
+                  f"(max_per_predicate={args.max_per_predicate}, max_pairs={args.max_pairs})")
         raw_df = run_patching(args, pairs, raw_path)
 
     out_paths, agg, id_all = make_outputs(raw_df, args.out_dir, args.num_pair_plots, trim_dead=args.trim_dead)
