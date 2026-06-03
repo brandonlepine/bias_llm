@@ -41,6 +41,17 @@ data/bbq/results/*/*
 !data/bbq/results/*/patching_pairs/
 data/bbq/results/*/patching_pairs/*
 !data/bbq/results/*/patching_pairs/*.csv
+# BBQ-derived WinoQueer-style stereotype datasets: track the reviewable curated predicates,
+# the flat stereotype worklist, and the built pairs (the dataset). Plots/scored stay local.
+!data/bbq/stereotypes/
+data/bbq/stereotypes/*
+!data/bbq/stereotypes/bbq_stereotypes_raw.csv
+!data/bbq/stereotypes/bbq_predicates_curated.csv
+!data/bbq/stereotypes/bbq_pairs_all.csv
+# BBQ candidates for the new pipeline (mirror the patching_pairs carve-out above)
+!data/bbq/results/*/patching_candidates/
+data/bbq/results/*/patching_candidates/*
+!data/bbq/results/*/patching_candidates/*.csv
 data/bbq/.git/
 # WinoQueer: the `results/` rule above ignores data/winoqueer/results/, but the pod needs
 # the patching-candidate CSVs as input. Track only those (other results stay local).
