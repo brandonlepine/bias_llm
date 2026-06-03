@@ -61,18 +61,32 @@ CATEGORIES: dict[str, dict] = {
     },
     "Disability_status": {
         "axis": "disability",
-        "dominant_default": "nondisabled",
+        "dominant_default": "able-bodied",
+        # "disabled" is the umbrella BBQ lists alongside a specific disability; drop it when a
+        # specific token is present so the granular group (autistic, deaf, cerebral palsy, …) shows.
+        "umbrella_tokens": {"disabled"},
         "map": {"disabled": "disabled", "physically disabled": "physically disabled",
                 "mentally-ill": "mentally ill", "D/deaf": "deaf",
                 "autistic people": "autistic", "people with blindness or low-vision": "blind",
-                "people with cerebral palsy": "disabled", "Down's syndrome": "disabled",
-                "people with cognitive disabilities or mental illness": "mentally ill",
-                "nondisabled": "nondisabled"},
+                "people with cerebral palsy": "has cerebral palsy", "Down's syndrome": "has Down syndrome",
+                "people with cognitive disabilities or mental illness": "cognitively disabled",
+                "nondisabled": "able-bodied"},
         "surface": {"disabled": ("disabled", "disabled people"),
                     "physically disabled": ("physically disabled", "physically disabled people"),
                     "mentally ill": ("mentally ill", "mentally ill people"),
                     "deaf": ("deaf", "deaf people"), "autistic": ("autistic", "autistic people"),
-                    "blind": ("blind", "blind people"), "nondisabled": ("able-bodied", "able-bodied people")},
+                    "blind": ("blind", "blind people"),
+                    "has cerebral palsy": ("a person with cerebral palsy", "people with cerebral palsy"),
+                    "has Down syndrome": ("a person with Down syndrome", "people with Down syndrome"),
+                    "cognitively disabled": ("cognitively disabled", "cognitively disabled people"),
+                    "able-bodied": ("able-bodied", "able-bodied people"),
+                    "neurotypical": ("neurotypical", "neurotypical people"),
+                    "hearing": ("hearing", "hearing people"), "sighted": ("sighted", "sighted people")},
+        # physical/sensory -> able-bodied/hearing/sighted; cognitive & mental -> neurotypical.
+        "reference": {"disabled": "able-bodied", "physically disabled": "able-bodied",
+                      "has cerebral palsy": "able-bodied", "deaf": "hearing", "blind": "sighted",
+                      "autistic": "neurotypical", "mentally ill": "neurotypical",
+                      "has Down syndrome": "neurotypical", "cognitively disabled": "neurotypical"},
     },
     "Physical_appearance": {
         "axis": "physical_appearance",
@@ -100,6 +114,7 @@ CATEGORIES: dict[str, dict] = {
     "Gender_identity": {
         "axis": "gender",
         "dominant_default": "a man",
+        "umbrella_tokens": {"trans"},  # drop generic "trans" when a specific trans group is present
         "map": {"F": "a woman", "M": "a man", "Transgender women": "a transgender woman",
                 "transgender women": "a transgender woman", "transgender men": "a transgender man",
                 "trans": "transgender"},
@@ -160,6 +175,14 @@ def surface(category: str, canon: str) -> tuple[str, str] | None:
 def axis_of(category: str) -> str | None:
     cat = CATEGORIES.get(category)
     return cat["axis"] if cat else None
+
+
+def umbrella_canons(category: str) -> set[str]:
+    """Canonical groups that are 'umbrella' (dropped by the builder when a specific group co-occurs)."""
+    cat = CATEGORIES.get(category)
+    if not cat:
+        return set()
+    return {cat["map"][t] for t in cat.get("umbrella_tokens", set()) if t in cat["map"]}
 
 
 def is_supported(category: str) -> bool:

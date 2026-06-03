@@ -69,11 +69,13 @@ def main() -> None:
             continue
         pred_pl = pluralize(predicate)
         axis = tax.axis_of(cat)
+        # canonicalize the template's target tokens; drop the umbrella group if a specific co-occurs
+        canons = [c for c in (tax.canonicalize(cat, tok) for tok in split_groups(t["target_groups"])) if c]
+        umb = tax.umbrella_canons(cat)
+        specifics = [c for c in canons if c not in umb]
+        use_canons = list(dict.fromkeys(specifics if specifics else canons))
         seen_pairs = set()
-        for token in split_groups(t["target_groups"]):
-            canon = tax.canonicalize(cat, token)
-            if canon is None:
-                continue
+        for canon in use_canons:
             ref = tax.reference_of(cat, canon)
             if canon == ref:
                 skipped["degenerate"] += 1
