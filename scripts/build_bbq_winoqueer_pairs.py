@@ -122,6 +122,7 @@ def main() -> None:
                     py, sy = render_frame(tmpl, nm, grp_r, p)
                     rows.append(dict(
                         row_id=rid, Group_x=canon, Group_y=ref, category=cat, axis=axis,
+                        block=tax.block_of(cat, canon),
                         predicate_label_provisional=t["social_value"], frame=fid, name=nm,
                         q_id=t["q_id"], predicate=p, continuation=p,
                         prefix_x=px, prefix_y=py, sent_x=sx, sent_y=sy,

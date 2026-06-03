@@ -147,6 +147,28 @@ CATEGORIES: dict[str, dict] = {
     },
 }
 
+# Regional blocks for Nationality: 30 thin nationalities -> a few well-powered groups for the
+# segmented analysis (and a sensible sub-axis). The per-nationality identity is still available.
+NATIONALITY_BLOCKS = {
+    "Afghan": "MENA", "Iranian": "MENA", "Iraqi": "MENA", "Libyan": "MENA", "Moroccan": "MENA",
+    "Palestinian": "MENA", "Saudi": "MENA", "Syrian": "MENA", "Yemeni": "MENA",
+    "Eritrean": "Sub-Saharan African", "Ethiopian": "Sub-Saharan African", "Guinean": "Sub-Saharan African",
+    "Kenyan": "Sub-Saharan African", "Malian": "Sub-Saharan African", "Mozambican": "Sub-Saharan African",
+    "Namibian": "Sub-Saharan African", "Nigerian": "Sub-Saharan African",
+    "Burmese": "East/SE Asian", "Chinese": "East/SE Asian", "Indonesian": "East/SE Asian",
+    "Japanese": "East/SE Asian", "Korean": "East/SE Asian", "Thai": "East/SE Asian", "Vietnamese": "East/SE Asian",
+    "Indian": "South Asian", "Pakistani": "South Asian", "Sri Lankan": "South Asian",
+    "British": "Western", "Irish": "Western", "Italian": "Western", "American": "Western",
+}
+
+
+def block_of(category: str, canon: str) -> str:
+    """Coarser grouping for the segmented analysis: nationality -> region; otherwise the identity itself."""
+    if category == "Nationality":
+        return NATIONALITY_BLOCKS.get(canon, canon)
+    return canon
+
+
 # Neutral, group-agnostic first names for the name-based frame (avoid race/gender-coded names).
 NEUTRAL_NAMES = ["Alex", "Casey", "Jordan", "Taylor", "Riley", "Quinn", "Morgan", "Avery", "Sam", "Jamie"]
 
