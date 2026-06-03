@@ -138,11 +138,12 @@ CATEGORIES: dict[str, dict] = {
             "Indonesian", "Iranian", "Iraqi", "Irish", "Italian", "Japanese", "Kenyan", "Korean",
             "Libyan", "Malian", "Moroccan", "Mozambican", "Namibian", "Nigerian", "Pakistani",
             "Palestinian", "Saudi", "Sri Lankan", "Syrian", "Thai", "Vietnamese", "Yemeni", "American"]},
-        "surface": {n: (n, f"{n} people") for n in [
+        "surface": {**{n: (n, f"{n} people") for n in [
             "Afghan", "British", "Burmese", "Chinese", "Eritrean", "Ethiopian", "Guinean", "Indian",
             "Indonesian", "Iranian", "Iraqi", "Irish", "Italian", "Japanese", "Kenyan", "Korean",
             "Libyan", "Malian", "Moroccan", "Mozambican", "Namibian", "Nigerian", "Pakistani",
             "Palestinian", "Saudi", "Sri Lankan", "Syrian", "Thai", "Vietnamese", "Yemeni", "American"]},
+            "Afghan": ("Afghani", "Afghan people")},  # reviewer: "Afghani" for the singular
     },
 }
 

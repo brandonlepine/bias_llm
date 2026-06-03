@@ -180,6 +180,14 @@ CURATED: dict[tuple[str, str], str] = {
 }
 
 
+# Stereotypes dropped after human review (keep=False). Key: (category, social_value).
+DROP: set[tuple[str, str]] = {
+    ("Disability_status", "stable partner"),                              # mentally ill — rejected
+    ("Disability_status", "people who are stable in society"),            # mentally ill — rejected
+    ("Disability_status", "people who have trouble keeping employment"),  # mentally ill — rejected
+}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Emit the reviewable curated-predicate CSV.")
     ap.add_argument("--raw", type=Path, default=Path("data/bbq/stereotypes/bbq_stereotypes_raw.csv"))
@@ -193,7 +201,8 @@ def main() -> None:
         target_groups=("target_groups", "first"),
     ).reset_index()
     agg["predicate"] = [CURATED.get((c, s), "") for c, s in zip(agg["category"], agg["social_value"])]
-    agg["keep"] = agg["predicate"] != ""
+    agg["keep"] = [(p != "") and ((c, s) not in DROP)
+                   for c, s, p in zip(agg["category"], agg["social_value"], agg["predicate"])]
     agg["notes"] = ""
     cols = ["category", "social_value", "n_templates", "target_groups", "example_question", "predicate", "keep", "notes"]
     agg[cols].sort_values(["category", "social_value"]).to_csv(args.out, index=False)

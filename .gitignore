@@ -50,6 +50,7 @@ data/bbq/stereotypes/*
 !data/bbq/stereotypes/bbq_pairs_all.csv
 !data/bbq/stereotypes/bbq_review_cards.csv
 !data/bbq/stereotypes/bbq_review_cards.jsonl
+!data/bbq/stereotypes/bbq_review_annotations.jsonl
 # BBQ candidates for the new pipeline (mirror the patching_pairs carve-out above)
 !data/bbq/results/*/patching_candidates/
 data/bbq/results/*/patching_candidates/*
