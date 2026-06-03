@@ -231,6 +231,125 @@ def source_agreement(long: pd.DataFrame, top_k: int, out_dir: Path):
     return out
 
 
+# ----------------------------------------------------------------------------- figures
+def _axis_palette(axes):
+    return {a: plt.cm.tab10(i % 10) for i, a in enumerate(sorted(axes))}
+
+
+def fig_read_vs_write(rw: pd.DataFrame, out_dir: Path):
+    """Per axis: agreement between a head's READ and WRITE rankings (low => two-stage circuit)."""
+    if rw.empty:
+        return
+    g = rw.groupby("axis")[["spearman_read_write", "jaccard_read_write"]].mean().sort_values("spearman_read_write")
+    pub_style()
+    fig, ax = plt.subplots(figsize=(10, 5.6))
+    x = np.arange(len(g)); w = 0.38
+    ax.bar(x - w / 2, g["spearman_read_write"], w, color="#1f78b4", label="Spearman(READ, WRITE)")
+    ax.bar(x + w / 2, g["jaccard_read_write"], w, color="#e08214", label="Jaccard(top READ, top WRITE)")
+    ax.axhline(0, color="#888", lw=0.8)
+    ax.set_xticks(x); ax.set_xticklabels(g.index, rotation=35, ha="right")
+    ax.set_ylabel("READ–WRITE agreement"); ax.legend(frameon=False)
+    ax.set_title("Identity-reading ≠ stereotype-writing heads — is the two-stage circuit universal?\n"
+                 "low bars on EVERY axis ⇒ the model reads an identity and writes its stereotype with different heads")
+    fig.tight_layout(); fig.savefig(out_dir / "fig_read_vs_write_by_axis.png"); plt.close(fig)
+
+
+def fig_axis_layer_profile(long: pd.DataFrame, out_dir: Path):
+    """Where (which layer) each axis's bias-writing happens — mean |WRITE| over heads, by layer."""
+    prof = long.groupby(["axis", "layer"])["write"].apply(lambda s: float(s.clip(lower=0).mean())).reset_index()
+    pal = _axis_palette(prof["axis"].unique())
+    pub_style()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for axis, g in prof.groupby("axis"):
+        g = g.sort_values("layer")
+        ax.plot(g["layer"], g["write"], "-o", ms=3, lw=2, color=pal[axis], label=axis)
+    ax.set_xlabel("layer"); ax.set_ylabel("mean positive WRITE effect over heads (normalized)")
+    ax.set_title("At what depth does each axis's bias get written?")
+    ax.legend(fontsize=8, ncol=2, frameon=False)
+    fig.tight_layout(); fig.savefig(out_dir / "fig_axis_layer_write_profile.png"); plt.close(fig)
+
+
+def fig_source_agreement(src: pd.DataFrame, out_dir: Path):
+    if src is None or src.empty:
+        return
+    srcs = [c.replace("mean_write_", "") for c in src.columns if c.startswith("mean_write_")]
+    if len(srcs) < 2:
+        return
+    s = src.sort_values("source_top_head_jaccard", ascending=False)
+    pub_style()
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(13, 5.4))
+    x = np.arange(len(s)); w = 0.38
+    a1.bar(x - w / 2, s[f"mean_write_{srcs[0]}"], w, label=srcs[0], color="#2c7fb8")
+    a1.bar(x + w / 2, s[f"mean_write_{srcs[1]}"], w, label=srcs[1], color="#c0392b")
+    a1.axhline(0, color="#888", lw=0.8); a1.set_xticks(x); a1.set_xticklabels(s["axis"], rotation=40, ha="right")
+    a1.set_ylabel("mean WRITE effect"); a1.set_title("Bias magnitude per source"); a1.legend(frameon=False)
+    a2.bar(x, s["source_top_head_jaccard"], color="#16a085")
+    a2.set_xticks(x); a2.set_xticklabels(s["axis"], rotation=40, ha="right")
+    a2.set_ylabel("Jaccard of top-WRITE heads"); a2.set_title(f"Do {srcs[0]} & {srcs[1]} use the SAME heads?")
+    fig.suptitle("Cross-dataset corroboration per axis (BBQ template vs CrowS naturalistic)", fontsize=13)
+    fig.tight_layout(); fig.savefig(out_dir / "fig_source_agreement_by_axis.png"); plt.close(fig)
+
+
+def fig_selectivity_by_axis(sel: pd.DataFrame, out_dir: Path):
+    """How identity-specific are each axis's heads? (distribution of WRITE selectivity, top heads only)."""
+    if sel.empty:
+        return
+    d = sel.dropna(subset=["selectivity_write"])
+    floor = d["max_write"].quantile(0.8)
+    d = d[d["max_write"] >= floor]  # only meaningfully-strong heads
+    order = d.groupby("axis")["selectivity_write"].median().sort_values(ascending=False).index
+    pub_style()
+    fig, ax = plt.subplots(figsize=(10, 5.6))
+    data = [d[d.axis == a]["selectivity_write"].dropna().values for a in order]
+    bp = ax.boxplot(data, labels=list(order), patch_artist=True, showfliers=False)
+    pal = _axis_palette(order)
+    for patch, a in zip(bp["boxes"], order):
+        patch.set_facecolor(pal[a]); patch.set_alpha(0.7)
+    ax.set_ylabel("WRITE selectivity (0=shared across identities, 1=one-identity)")
+    ax.set_xticklabels(list(order), rotation=35, ha="right")
+    ax.set_title("Within each axis, how identity-specific are the strong bias-writing heads?")
+    fig.tight_layout(); fig.savefig(out_dir / "fig_selectivity_by_axis.png"); plt.close(fig)
+
+
+def fig_heads_by_identity_per_axis(long: pd.DataFrame, gate: set, top_n: int, out_dir: Path):
+    """Small multiples: per axis, top WRITE heads × that axis's identities (the shared-vs-specific map)."""
+    axes = sorted(set(long.loc[~long["is_umbrella"] & long["identity_mapped"], "axis"]))
+    axes = [a for a in axes if long[long.axis == a]["identity"].nunique() >= 2]
+    if not axes:
+        return
+    pub_style()
+    ncol = 3
+    nrow = (len(axes) + ncol - 1) // ncol
+    fig, axarr = plt.subplots(nrow, ncol, figsize=(ncol * 4.2, nrow * 3.6), squeeze=False)
+    for ax, axis in zip(axarr.ravel(), axes):
+        la = long[(long.axis == axis) & (~long.is_umbrella) & (long.identity_mapped)]
+        st = group_stats(la, "identity")
+        ids = sorted(st["group"].unique())
+        piv = st.pivot_table(index=["layer", "head"], columns="group", values="write").reindex(columns=ids)
+        if gate:
+            piv = piv[[idx in gate for idx in piv.index]]
+        piv = piv.reindex(piv.abs().max(axis=1).sort_values(ascending=False).index).head(top_n)
+        if piv.empty:
+            ax.axis("off"); ax.set_title(axis, fontsize=9); continue
+        v = max(float(np.nanpercentile(np.abs(piv.values), 98)), 1e-9)
+        im = ax.imshow(piv.values, aspect="auto", cmap="RdBu_r", vmin=-v, vmax=v, interpolation="nearest")
+        ax.set_xticks(range(len(ids))); ax.set_xticklabels(ids, rotation=55, ha="right", fontsize=6)
+        ax.set_yticks(range(len(piv))); ax.set_yticklabels([f"L{l}H{h}" for l, h in piv.index], fontsize=5, family="monospace")
+        ax.set_title(axis, fontsize=10)
+    for ax in axarr.ravel()[len(axes):]:
+        ax.axis("off")
+    fig.suptitle("Per-axis: which heads write which identity's stereotype  (red = writes; columns = identities)", fontsize=13)
+    fig.tight_layout(); fig.savefig(out_dir / "fig_heads_by_identity_per_axis.png", bbox_inches="tight"); plt.close(fig)
+
+
+def make_figures(long, spec, sel, rw, src, gate, top_k, out_dir):
+    fig_read_vs_write(rw, out_dir)
+    fig_axis_layer_profile(long, out_dir)
+    fig_source_agreement(src, out_dir)
+    fig_selectivity_by_axis(sel, out_dir)
+    fig_heads_by_identity_per_axis(long, gate, 25, out_dir)
+
+
 # ----------------------------------------------------------------------------- main
 def main() -> None:
     ap = argparse.ArgumentParser(description="Dataset-agnostic segmented circuit analysis.")
@@ -261,9 +380,11 @@ def main() -> None:
         group_stats(long, col).to_csv(args.out_dir / f"head_stats__{level}.csv", index=False)
     pooled = pooled_ranking(long); pooled.to_csv(args.out_dir / "pooled_head_ranking.csv", index=False)
 
+    gate = gate_heads(pooled, args.gate_frac, args.gate_min_k)
     sel, rw, ov = within_axis_identity(long, spec, args.top_k, args.out_dir)
     Jax, nax = cross_axis_overlap(long, args.top_k, args.out_dir)
     src = source_agreement(long, args.top_k, args.out_dir)
+    make_figures(long, spec, sel, rw, src, gate, args.top_k, args.out_dir)
 
     if len(Jax) >= 2:
         print("\n=== cross-axis WRITE-head overlap (mean off-diagonal Jaccard vs null) ===")
