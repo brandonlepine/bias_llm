@@ -28,6 +28,18 @@ credentials.json
 # Large local artifacts
 models/
 results/
+# Combined BBQ+CrowS pooled candidates + per-axis cohorts (small; pod inputs) — track these
+!data/combined/
+data/combined/*
+!data/combined/bbq_crows_candidates.csv
+!data/combined/results/
+data/combined/results/*
+!data/combined/results/*/
+data/combined/results/*/*
+!data/combined/results/*/segmented/
+data/combined/results/*/segmented/*
+!data/combined/results/*/segmented/cohort.csv
+!data/combined/results/*/segmented/cohort_coverage.csv
 data/bbq/*
 !data/bbq/data/
 !data/bbq/data/*.jsonl

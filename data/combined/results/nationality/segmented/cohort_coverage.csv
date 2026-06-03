@@ -1,0 +1,106 @@
+axis,block,Group_x,predicate_label_provisional,n_kept
+nationality,East/SE Asian,Burmese,submissiveness,12
+nationality,East/SE Asian,Chinese,parental pressure,11
+nationality,East/SE Asian,Chinese,submissiveness,10
+nationality,East/SE Asian,Indonesian,submissiveness,6
+nationality,East/SE Asian,Japanese,parental pressure,10
+nationality,East/SE Asian,Japanese,submissiveness,18
+nationality,East/SE Asian,Korean,parental pressure,10
+nationality,East/SE Asian,Korean,submissiveness,10
+nationality,East/SE Asian,Thai,submissiveness,14
+nationality,East/SE Asian,Vietnamese,submissiveness,10
+nationality,MENA,Afghan,terrorism,11
+nationality,MENA,Afghan,violence towards women,14
+nationality,MENA,Afghan,violence/terrorism,9
+nationality,MENA,Iranian,terrorism,7
+nationality,MENA,Iranian,violence towards women,10
+nationality,MENA,Iranian,violence/terrorism,9
+nationality,MENA,Iraqi,terrorism,11
+nationality,MENA,Iraqi,violence towards women,10
+nationality,MENA,Iraqi,violence/terrorism,11
+nationality,MENA,Libyan,terrorism,10
+nationality,MENA,Libyan,violence towards women,6
+nationality,MENA,Libyan,violence/terrorism,11
+nationality,MENA,Moroccan,violence towards women,6
+nationality,MENA,Palestinian,terrorism,12
+nationality,MENA,Palestinian,violence towards women,6
+nationality,MENA,Palestinian,violence/terrorism,11
+nationality,MENA,Saudi,terrorism,9
+nationality,MENA,Saudi,violence towards women,14
+nationality,MENA,Saudi,violence/terrorism,10
+nationality,MENA,Syrian,terrorism,10
+nationality,MENA,Syrian,violence towards women,6
+nationality,MENA,Syrian,violence/terrorism,8
+nationality,MENA,Yemeni,terrorism,10
+nationality,MENA,Yemeni,violence towards women,8
+nationality,MENA,Yemeni,violence/terrorism,11
+nationality,South Asian,Indian,bad odour,16
+nationality,South Asian,Indian,parental pressure,8
+nationality,Sub-Saharan African,Eritrean,lack of access to technology,9
+nationality,Sub-Saharan African,Eritrean,poverty,12
+nationality,Sub-Saharan African,Ethiopian,lack of access to technology,10
+nationality,Sub-Saharan African,Ethiopian,poverty,6
+nationality,Sub-Saharan African,Guinean,lack of access to technology,11
+nationality,Sub-Saharan African,Guinean,poverty,12
+nationality,Sub-Saharan African,Kenyan,lack of access to technology,10
+nationality,Sub-Saharan African,Kenyan,poverty,14
+nationality,Sub-Saharan African,Malian,lack of access to technology,11
+nationality,Sub-Saharan African,Malian,poverty,18
+nationality,Sub-Saharan African,Mozambican,lack of access to technology,12
+nationality,Sub-Saharan African,Mozambican,poverty,9
+nationality,Sub-Saharan African,Namibian,lack of access to technology,7
+nationality,Sub-Saharan African,Nigerian,committing fraud,26
+nationality,Sub-Saharan African,Nigerian,lack of access to technology,10
+nationality,Sub-Saharan African,Nigerian,poverty,9
+nationality,Western,British,unruly/anti-social behaviour,15
+nationality,Western,Irish,alcoholism,24
+nationality,Western,Italian,links to organised crime,10
+nationality,nationality,A Chinese,CROWS,1
+nationality,nationality,Africa,CROWS,1
+nationality,nationality,African,CROWS,1
+nationality,nationality,American man,CROWS,1
+nationality,nationality,Americans,CROWS,1
+nationality,nationality,Amish,CROWS,1
+nationality,nationality,Arab,CROWS,2
+nationality,nationality,Asian,CROWS,4
+nationality,nationality,Asians,CROWS,1
+nationality,nationality,Carlos Prez,CROWS,1
+nationality,nationality,China,CROWS,1
+nationality,nationality,Chinese,CROWS,4
+nationality,nationality,England,CROWS,1
+nationality,nationality,Eskimo,CROWS,1
+nationality,nationality,German,CROWS,1
+nationality,nationality,Greek,CROWS,1
+nationality,nationality,Gypsys,CROWS,1
+nationality,nationality,Immigrants,CROWS,1
+nationality,nationality,Indian,CROWS,2
+nationality,nationality,Italian,CROWS,6
+nationality,nationality,Italians,CROWS,2
+nationality,nationality,Italy,CROWS,1
+nationality,nationality,Japanese,CROWS,1
+nationality,nationality,Jorge and his,CROWS,1
+nationality,nationality,Korean,CROWS,1
+nationality,nationality,Latino,CROWS,1
+nationality,nationality,Mexians,CROWS,1
+nationality,nationality,Mexican,CROWS,9
+nationality,nationality,Mexicans,CROWS,4
+nationality,nationality,Mexico,CROWS,3
+nationality,nationality,Mexicos the best,CROWS,1
+nationality,nationality,Middle Eastern,CROWS,2
+nationality,nationality,Middle Easterners,CROWS,1
+nationality,nationality,Mississippi,CROWS,1
+nationality,nationality,Native Americans,CROWS,1
+nationality,nationality,Roma Gypsy,CROWS,1
+nationality,nationality,Russian,CROWS,1
+nationality,nationality,Sergey,CROWS,1
+nationality,nationality,Southern,CROWS,1
+nationality,nationality,Syria,CROWS,1
+nationality,nationality,a Mexican,CROWS,1
+nationality,nationality,an Italian,CROWS,1
+nationality,nationality,foreigners,CROWS,1
+nationality,nationality,gypsy,CROWS,1
+nationality,nationality,hispanic,CROWS,1
+nationality,nationality,illegal immigrants,CROWS,2
+nationality,nationality,illegals,CROWS,1
+nationality,nationality,immigrant,CROWS,1
+nationality,nationality,immigrants,CROWS,3

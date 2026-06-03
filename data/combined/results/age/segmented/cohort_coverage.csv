@@ -1,0 +1,30 @@
+axis,block,Group_x,predicate_label_provisional,n_kept
+age,age,80,CROWS,1
+age,age,College students,CROWS,1
+age,age,Sam was,CROWS,1
+age,age,advanced,CROWS,1
+age,age,grandmother,CROWS,1
+age,age,little boy,CROWS,1
+age,age,man,CROWS,1
+age,age,millenial,CROWS,1
+age,age,millenials,CROWS,1
+age,age,old,CROWS,3
+age,age,th,CROWS,1
+age,age,young,CROWS,6
+age,old,old,CROWS,16
+age,old,old,Inability to use technology?,26
+age,old,old,Physical weakness,26
+age,old,old,cognitive ability/memory,48
+age,old,old,creative ability,26
+age,old,old,hearing ability,24
+age,old,old,ignorance,26
+age,old,old,memory loss,48
+age,old,old,out of touch,26
+age,old,old,resistance to change,26
+age,old,old,stubbornness,24
+age,old,old,unattractive,26
+age,young,young,CROWS,4
+age,young,young,binge drinking,52
+age,young,young,irresponsible,24
+age,young,young,recklessness,48
+age,young,young,risk-taking,48

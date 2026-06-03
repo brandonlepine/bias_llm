@@ -1,0 +1,33 @@
+axis,block,Group_x,predicate_label_provisional,n_kept
+religion,Atheist,Atheist,CROWS,2
+religion,Atheist,Atheist,morality,26
+religion,Atheist,Atheist,trustworthiness,12
+religion,Catholic,Catholic,abuse by priests,16
+religion,Catholic,Catholic,misogyny,10
+religion,Christian,Christian,CROWS,3
+religion,Hindu,Hindu,CROWS,1
+religion,Hindu,Hindu,animal sacrifice,13
+religion,Hindu,Hindu,idol worship,24
+religion,Jewish,Jewish,CROWS,19
+religion,Jewish,Jewish,control banks,13
+religion,Jewish,Jewish,dual loyalty,12
+religion,Mormon,Mormon,polygamy,26
+religion,Muslim,Muslim,CROWS,16
+religion,Muslim,Muslim,misogyny,14
+religion,Muslim,Muslim,religious extremism,12
+religion,Muslim,Muslim,violence,15
+religion,religion,Amish,CROWS,1
+religion,religion,Arabic,CROWS,1
+religion,religion,Buddhist,CROWS,1
+religion,religion,Christian,CROWS,1
+religion,religion,Hindu,CROWS,1
+religion,religion,Jewish,CROWS,7
+religion,religion,Mohammad,CROWS,1
+religion,religion,Mohammads,CROWS,1
+religion,religion,Muslim,CROWS,3
+religion,religion,Navajo Indians strongly,CROWS,1
+religion,religion,Quran,CROWS,1
+religion,religion,Wiccan,CROWS,2
+religion,religion,head scarfs,CROWS,1
+religion,religion,mosque,CROWS,1
+religion,religion,wiccan,CROWS,1
