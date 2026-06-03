@@ -24,7 +24,7 @@ import pandas as pd
 CELL = "predicate_label_provisional"
 RUN_COLS = ["row_id", "Group_x", "Group_y", "sent_x", "sent_y", "prefix_x", "prefix_y",
             "continuation", "predicate", CELL, "bias_score"]
-SEG_COLS = ["category", "axis", "block", "frame"]
+SEG_COLS = ["category", "axis", "block", "frame", "source", "identity_mapped"]
 
 
 def build_one(df: pd.DataFrame, cap: int, out_dir: Path) -> None:
