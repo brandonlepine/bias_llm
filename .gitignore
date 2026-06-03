@@ -57,6 +57,11 @@ data/bbq/stereotypes/*
 !data/bbq/results/*/patching_candidates/
 data/bbq/results/*/patching_candidates/*
 !data/bbq/results/*/patching_candidates/*.csv
+# Frozen per-axis segmented cohorts (pod input for the BBQ patching runs)
+!data/bbq/results/*/segmented/
+data/bbq/results/*/segmented/*
+!data/bbq/results/*/segmented/cohort.csv
+!data/bbq/results/*/segmented/cohort_coverage.csv
 data/bbq/.git/
 # WinoQueer: the `results/` rule above ignores data/winoqueer/results/, but the pod needs
 # the patching-candidate CSVs as input. Track only those (other results stay local).
