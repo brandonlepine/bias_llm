@@ -125,9 +125,9 @@ def main() -> None:
     ap.add_argument("--pairs_csv", type=Path, required=True)
     ap.add_argument("--out_dir", type=Path, required=True)
     ap.add_argument("--ablation_ranking_csv", type=Path, required=True,
-                    help="winoqueer_head_ablation_ranking.csv — candidate pool = its top heads.")
+                    help="head_ablation_ranking.csv — candidate pool = its top heads.")
     ap.add_argument("--marginal_curve_csv", type=Path, default=None,
-                    help="winoqueer_head_knockout_curve.csv to overlay for comparison.")
+                    help="head_knockout_curve.csv to overlay for comparison.")
     ap.add_argument("--model_path", type=str, default="meta-llama/Llama-3.1-8B")
     ap.add_argument("--tl_model_name", type=str, default="meta-llama/Llama-3.1-8B")
     ap.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
@@ -150,7 +150,7 @@ def main() -> None:
 
     started = time.perf_counter()
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    curve_csv = args.out_dir / "winoqueer_greedy_knockout_curve.csv"
+    curve_csv = args.out_dir / "greedy_knockout_curve.csv"
 
     # candidate pool = top-N heads by single-head necessity
     arank = pd.read_csv(args.ablation_ranking_csv).sort_values("ablation_effect", ascending=False)
@@ -213,7 +213,7 @@ def main() -> None:
     ax.set_xlabel("# of heads ablated together"); ax.set_ylabel("fraction of bias remaining")
     ax.set_title("Greedy vs marginal head knockout — how concentrated is the bias circuit?")
     ax.legend()
-    png = args.out_dir / "winoqueer_greedy_knockout_curve.png"
+    png = args.out_dir / "greedy_knockout_curve.png"
     fig.tight_layout(); fig.savefig(png, dpi=160, bbox_inches="tight"); plt.close(fig)
 
     # ---- robustness: bootstrap the pair set, report per-head selection frequency ----
@@ -238,7 +238,7 @@ def main() -> None:
              "mean_selection_step": step_sum[h] / c}
             for h, c in sel_count.items()
         ]).sort_values("selection_frequency", ascending=False).reset_index(drop=True)
-        freq_csv = args.out_dir / "winoqueer_greedy_selection_frequency.csv"
+        freq_csv = args.out_dir / "greedy_selection_frequency.csv"
         freq.to_csv(freq_csv, index=False)
         top = freq.head(30).iloc[::-1]
         fig2, ax2 = plt.subplots(figsize=(9.5, max(4, len(top) * 0.3)))
@@ -247,7 +247,7 @@ def main() -> None:
         ax2.set_yticklabels([f"L{int(l)}H{int(h)}" for l, h in zip(top["layer"], top["head"])], fontsize=8)
         ax2.set_xlabel(f"selection frequency across {args.seeds} bootstrap seeds")
         ax2.set_title("Greedy knockout robustness — how often each head is selected")
-        fig2.tight_layout(); fig2.savefig(args.out_dir / "winoqueer_greedy_selection_frequency.png", dpi=160, bbox_inches="tight"); plt.close(fig2)
+        fig2.tight_layout(); fig2.savefig(args.out_dir / "greedy_selection_frequency.png", dpi=160, bbox_inches="tight"); plt.close(fig2)
         print(f"Wrote {freq_csv}")
 
     print(f"\nWrote {curve_csv}\nWrote {png}")

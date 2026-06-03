@@ -299,8 +299,8 @@ def plot_layer_summary(bias: pd.DataFrame, attn: pd.DataFrame, png: Path) -> Non
 def make_outputs(raw_df: pd.DataFrame, out_dir: Path):
     bias = raw_df.groupby(["layer", "head"], as_index=False)["bias_effect"].mean()
     attn = raw_df.groupby(["layer", "head"], as_index=False)["attn_readout_to_identity"].mean()
-    bias_csv = out_dir / "winoqueer_head_patching_layer_head.csv"
-    attn_csv = out_dir / "winoqueer_head_attention_layer_head.csv"
+    bias_csv = out_dir / "head_patching_layer_head.csv"
+    attn_csv = out_dir / "head_attention_layer_head.csv"
     bias.to_csv(bias_csv, index=False)
     attn.to_csv(attn_csv, index=False)
 
@@ -310,7 +310,7 @@ def make_outputs(raw_df: pd.DataFrame, out_dir: Path):
     az = (merged["attn_readout_to_identity"] - merged["attn_readout_to_identity"].mean()) / (merged["attn_readout_to_identity"].std() + 1e-9)
     merged["circuit_score"] = bz + az
     merged = merged.sort_values("circuit_score", ascending=False).reset_index(drop=True)
-    rank_csv = out_dir / "winoqueer_head_circuit_ranking.csv"
+    rank_csv = out_dir / "head_circuit_ranking.csv"
     merged.to_csv(rank_csv, index=False)
 
     # heads to highlight on the heatmaps
@@ -319,11 +319,11 @@ def make_outputs(raw_df: pd.DataFrame, out_dir: Path):
 
     bias_p = bias.pivot(index="layer", columns="head", values="bias_effect").sort_index().sort_index(axis=1)
     attn_p = attn.pivot(index="layer", columns="head", values="attn_readout_to_identity").sort_index().sort_index(axis=1)
-    bias_png = out_dir / "winoqueer_head_patching_heatmap.png"
-    attn_png = out_dir / "winoqueer_head_attention_heatmap.png"
-    scatter_png = out_dir / "winoqueer_head_circuit_scatter.png"
-    bar_png = out_dir / "winoqueer_head_top_circuit_bar.png"
-    layer_png = out_dir / "winoqueer_head_layer_summary.png"
+    bias_png = out_dir / "head_patching_heatmap.png"
+    attn_png = out_dir / "head_attention_heatmap.png"
+    scatter_png = out_dir / "head_circuit_scatter.png"
+    bar_png = out_dir / "head_top_circuit_bar.png"
+    layer_png = out_dir / "head_layer_summary.png"
 
     plot_layer_head_heatmap(bias_p, bias_png, "Head patching (queer→control): mean Δ logP(predicate)",
                             "mean bias_effect  (>0 = head writes stereotype)", diverging=True, box_cells=top_bias)
@@ -358,7 +358,7 @@ def main() -> None:
 
     started = time.perf_counter()
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    raw_path = args.out_dir / "winoqueer_head_patching_raw.csv"
+    raw_path = args.out_dir / "head_patching_raw.csv"
 
     if args.plot_only:
         if not raw_path.exists():

@@ -23,8 +23,8 @@ import pandas as pd
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Sufficiency (patching) x necessity (ablation) head overlap.")
-    ap.add_argument("--patching_csv", type=Path, required=True, help="winoqueer_head_circuit_ranking.csv")
-    ap.add_argument("--ablation_csv", type=Path, required=True, help="winoqueer_head_ablation_ranking.csv")
+    ap.add_argument("--patching_csv", type=Path, required=True, help="head_circuit_ranking.csv")
+    ap.add_argument("--ablation_csv", type=Path, required=True, help="head_ablation_ranking.csv")
     ap.add_argument("--out_dir", type=Path, required=True)
     ap.add_argument("--top_k", type=int, default=15)
     args = ap.parse_args()
@@ -38,7 +38,7 @@ def main() -> None:
     az = (m["ablation_effect"] - m["ablation_effect"].mean()) / (m["ablation_effect"].std() + 1e-9)
     m["core_score"] = bz + az
     m = m.sort_values("core_score", ascending=False).reset_index(drop=True)
-    merged_csv = args.out_dir / "winoqueer_head_sufficiency_necessity.csv"
+    merged_csv = args.out_dir / "head_sufficiency_necessity.csv"
     m.to_csv(merged_csv, index=False)
 
     # Scatter: sufficiency vs necessity, size by reliability, color by layer.
@@ -59,7 +59,7 @@ def main() -> None:
             ha="right", va="top", fontsize=9.5, color="#555",
             bbox=dict(boxstyle="round", fc="white", ec="#ccc", alpha=0.85))
     fig.colorbar(sc, ax=ax, fraction=0.045, pad=0.02).set_label("layer", fontsize=10)
-    png = args.out_dir / "winoqueer_head_sufficiency_necessity.png"
+    png = args.out_dir / "head_sufficiency_necessity.png"
     fig.tight_layout(); fig.savefig(png, dpi=160, bbox_inches="tight"); plt.close(fig)
 
     print(f"Wrote {merged_csv}\nWrote {png}")

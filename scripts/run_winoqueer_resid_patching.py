@@ -396,8 +396,8 @@ def plot_pair_heatmap(sub: pd.DataFrame, png: Path, title: str, trim_dead: bool 
 
 def make_outputs(raw_df: pd.DataFrame, out_dir: Path, num_pair_plots: int, trim_dead: bool = False):
     """Aggregates + plots from a raw patching CSV (used by both full runs and --plot_only)."""
-    span_csv = out_dir / "winoqueer_resid_pre_span_heatmap.csv"
-    span_png = out_dir / "winoqueer_resid_pre_span_heatmap.png"
+    span_csv = out_dir / "resid_pre_span_heatmap.csv"
+    span_png = out_dir / "resid_pre_span_heatmap.png"
     agg = aggregate_by_span(raw_df, "bias_effect")
     agg.rename(columns={"value": "mean_bias_effect"}).to_csv(span_csv, index=False)
     plot_span_heatmap(agg, span_png, "WinoQueer resid_pre patching (queer→control) by span — ALL predicates")
@@ -419,7 +419,7 @@ def make_outputs(raw_df: pd.DataFrame, out_dir: Path, num_pair_plots: int, trim_
             extra += [per_label_dir / f"span_{safe}.csv", per_label_dir / f"span_{safe}.png"]
 
     id_all = raw_df[raw_df["span"] == "identity_all"].groupby("layer", as_index=False)["bias_effect"].mean()
-    id_all_csv = out_dir / "winoqueer_resid_pre_identity_span_by_layer.csv"
+    id_all_csv = out_dir / "resid_pre_identity_span_by_layer.csv"
     id_all.rename(columns={"bias_effect": "mean_bias_effect"}).to_csv(id_all_csv, index=False)
 
     # Per-pair plots: ONE representative (highest-bias) pair per DISTINCT predicate, so the
@@ -475,7 +475,7 @@ def main() -> None:
 
     started = time.perf_counter()
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    raw_path = args.out_dir / "winoqueer_resid_pre_patching_raw.csv"
+    raw_path = args.out_dir / "resid_pre_patching_raw.csv"
 
     if args.plot_only:
         if not raw_path.exists():

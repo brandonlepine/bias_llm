@@ -244,7 +244,7 @@ def make_outputs(raw_df: pd.DataFrame, cum_df: pd.DataFrame | None, out_dir: Pat
         n=("ablation_effect", "size"),
     ).reset_index()
     agg = agg.sort_values("ablation_effect", ascending=False).reset_index(drop=True)
-    rank_csv = out_dir / "winoqueer_head_ablation_ranking.csv"
+    rank_csv = out_dir / "head_ablation_ranking.csv"
     agg.to_csv(rank_csv, index=False); paths.append(rank_csv)
 
     # necessity heatmap (layer x head)
@@ -265,7 +265,7 @@ def make_outputs(raw_df: pd.DataFrame, cum_df: pd.DataFrame | None, out_dir: Pat
             xi, yi = heads.index(r["head"]), layers.index(r["layer"])
             ax.add_patch(Rectangle((xi - 0.5, yi - 0.5), 1, 1, fill=False, edgecolor="#00d000", linewidth=1.8))
     fig.colorbar(im, ax=ax, fraction=0.045, pad=0.02).set_label("mean ablation_effect")
-    hp = out_dir / "winoqueer_head_ablation_heatmap.png"
+    hp = out_dir / "head_ablation_heatmap.png"
     fig.tight_layout(); fig.savefig(hp, dpi=160, bbox_inches="tight"); plt.close(fig); paths.append(hp)
 
     # reliability volcano: mean effect vs sign-consistency
@@ -278,13 +278,13 @@ def make_outputs(raw_df: pd.DataFrame, cum_df: pd.DataFrame | None, out_dir: Pat
     ax.set_xlabel("mean ablation_effect (necessity)"); ax.set_ylabel("sign-consistency (fraction of pairs with effect>0)")
     ax.set_title("Head ablation reliability — robust necessary heads are top-right")
     fig.colorbar(sc, ax=ax, fraction=0.045, pad=0.02).set_label("layer")
-    vp = out_dir / "winoqueer_head_ablation_volcano.png"
+    vp = out_dir / "head_ablation_volcano.png"
     fig.tight_layout(); fig.savefig(vp, dpi=160, bbox_inches="tight"); plt.close(fig); paths.append(vp)
 
     # cumulative knockout curve
     if cum_df is not None and not cum_df.empty:
         curve = cum_df.groupby("k")["frac_bias_remaining"].agg(["mean", "std", "count"]).reset_index()
-        curve.to_csv(out_dir / "winoqueer_head_knockout_curve.csv", index=False)
+        curve.to_csv(out_dir / "head_knockout_curve.csv", index=False)
         fig, ax = plt.subplots(figsize=(9, 5.5))
         ax.plot(curve["k"], curve["mean"], "-o", color="#c0392b", lw=2, ms=4)
         se = curve["std"] / curve["count"].clip(lower=1) ** 0.5
@@ -292,9 +292,9 @@ def make_outputs(raw_df: pd.DataFrame, cum_df: pd.DataFrame | None, out_dir: Pat
         ax.axhline(1.0, color="#999", ls=":", lw=1); ax.axhline(0.0, color="#999", ls=":", lw=1)
         ax.set_xlabel("# of top necessary heads ablated together"); ax.set_ylabel("fraction of bias remaining")
         ax.set_title("Cumulative knockout: how concentrated is the bias circuit?")
-        kp = out_dir / "winoqueer_head_knockout_curve.png"
+        kp = out_dir / "head_knockout_curve.png"
         fig.tight_layout(); fig.savefig(kp, dpi=160, bbox_inches="tight"); plt.close(fig)
-        paths += [out_dir / "winoqueer_head_knockout_curve.csv", kp]
+        paths += [out_dir / "head_knockout_curve.csv", kp]
     return paths, agg
 
 
@@ -321,8 +321,8 @@ def main() -> None:
 
     started = time.perf_counter()
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    raw_path = args.out_dir / "winoqueer_head_ablation_raw.csv"
-    cum_path = args.out_dir / "winoqueer_head_knockout_raw.csv"
+    raw_path = args.out_dir / "head_ablation_raw.csv"
+    cum_path = args.out_dir / "head_knockout_raw.csv"
 
     if args.plot_only:
         if not raw_path.exists():

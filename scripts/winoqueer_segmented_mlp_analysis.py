@@ -38,7 +38,7 @@ def group_value(group: str) -> str | None:
 
 def load_group_csvs(in_dir: Path) -> pd.DataFrame:
     frames = []
-    for p in sorted(in_dir.glob("winoqueer_mlp_neuron_attribution__*.csv")):
+    for p in sorted(in_dir.glob("mlp_neuron_attribution__*.csv")):
         df = pd.read_csv(p)
         if "group" in df.columns:
             frames.append(df)
@@ -185,7 +185,7 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     allg = load_group_csvs(args.in_dir)
 
-    prof_path = args.in_dir / "winoqueer_mlp_layer_profile_by_group.csv"
+    prof_path = args.in_dir / "mlp_layer_profile_by_group.csv"
     if prof_path.exists():
         prof = pd.read_csv(prof_path)
         plot_layer_profiles_by_axis(prof, args.out_dir)

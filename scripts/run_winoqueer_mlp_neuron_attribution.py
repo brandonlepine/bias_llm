@@ -334,14 +334,14 @@ def write_group_outputs(group_res, out_dir, n_layers, d_mlp, top_csv_rows):
             continue
         gdf = build_neuron_df(gres, n_layers, d_mlp)
         gdf.insert(0, "group", key); gdf.insert(1, "level", level)
-        path = out_dir / f"winoqueer_mlp_neuron_attribution__{_safe_name(key)}.csv"
+        path = out_dir / f"mlp_neuron_attribution__{_safe_name(key)}.csv"
         gdf.reindex(gdf["core_score"].abs().sort_values(ascending=False).index).head(top_csv_rows).to_csv(path, index=False)
         written.append(path)
         prof = layer_profile(gres, n_layers)
         prof["group"] = key; prof["level"] = level; prof["n_used"] = gres["n_used"]
         prof_rows.append(prof)
     if prof_rows:
-        prof_path = out_dir / "winoqueer_mlp_layer_profile_by_group.csv"
+        prof_path = out_dir / "mlp_layer_profile_by_group.csv"
         pd.concat(prof_rows, ignore_index=True).to_csv(prof_path, index=False)
         written.append(prof_path)
     return written
@@ -359,7 +359,7 @@ def make_plots(df, res, out_dir, n_layers, d_mlp, top_bar=25, top_scatter=40):
         "suff_abs_mass": np.abs(suff_m).sum(1),
         "nec_abs_mass": np.abs(nec_m).sum(1),
     })
-    prof_csv = out_dir / "winoqueer_mlp_layer_profile.csv"
+    prof_csv = out_dir / "mlp_layer_profile.csv"
     prof.to_csv(prof_csv, index=False); paths.append(prof_csv)
     fig, ax = plt.subplots(figsize=(10, 5.5))
     ax.plot(prof["layer"], prof["suff_pos_mass"], "-o", color="#2c7fb8", lw=2, ms=4, label="sufficiency (Σ positive neuron attr)")
@@ -367,7 +367,7 @@ def make_plots(df, res, out_dir, n_layers, d_mlp, top_bar=25, top_scatter=40):
     ax.set_xlabel("layer"); ax.set_ylabel("summed positive neuron attribution (frac of bias gap)")
     ax.set_title("WinoQueer MLP — which layers' neurons write / are needed for the bias")
     ax.legend()
-    p = out_dir / "winoqueer_mlp_layer_profile.png"
+    p = out_dir / "mlp_layer_profile.png"
     fig.tight_layout(); fig.savefig(p, dpi=160, bbox_inches="tight"); plt.close(fig); paths.append(p)
 
     # 2. top-neuron bars ---------------------------------------------------------------
@@ -381,7 +381,7 @@ def make_plots(df, res, out_dir, n_layers, d_mlp, top_bar=25, top_scatter=40):
         ax.barh(range(len(t)), t[col], color=color, alpha=0.85)
         ax.set_yticks(range(len(t))); ax.set_yticklabels(labels, fontsize=8)
         ax.set_xlabel("attribution (frac of bias gap)"); ax.set_title(title, fontsize=11)
-    p = out_dir / "winoqueer_mlp_top_neurons.png"
+    p = out_dir / "mlp_top_neurons.png"
     fig.tight_layout(); fig.savefig(p, dpi=160, bbox_inches="tight"); plt.close(fig); paths.append(p)
 
     # 3. neuron sufficiency x necessity (density + labeled core) ------------------------
@@ -403,7 +403,7 @@ def make_plots(df, res, out_dir, n_layers, d_mlp, top_bar=25, top_scatter=40):
     ax.set_xlabel("sufficiency:  inject neuron → Δ bias  (frac of bias gap)")
     ax.set_ylabel("necessity:  remove neuron → Δ bias  (frac of bias gap)")
     ax.set_title("WinoQueer MLP neurons — sufficiency × necessity\n(grey = all 458k; colored = top core circuit, top-right)")
-    p = out_dir / "winoqueer_mlp_suff_vs_nec.png"
+    p = out_dir / "mlp_suff_vs_nec.png"
     fig.tight_layout(); fig.savefig(p, dpi=160, bbox_inches="tight"); plt.close(fig); paths.append(p)
 
     # 4. layer x neuron fingerprint (signed sufficiency) -------------------------------
@@ -414,7 +414,7 @@ def make_plots(df, res, out_dir, n_layers, d_mlp, top_bar=25, top_scatter=40):
         ax.set_ylabel("layer"); ax.set_title(f"MLP {title} attribution (layer × neuron)", fontsize=10)
         fig.colorbar(im, ax=ax, fraction=0.015, pad=0.01)
     axes[1].set_xlabel(f"neuron index (0..{d_mlp-1})")
-    p = out_dir / "winoqueer_mlp_fingerprint.png"
+    p = out_dir / "mlp_fingerprint.png"
     fig.tight_layout(); fig.savefig(p, dpi=150, bbox_inches="tight"); plt.close(fig); paths.append(p)
     return paths, prof
 
@@ -428,14 +428,14 @@ def make_verify_plot(df, top_suff, top_nec, suff_exact, nec_exact, out_dir):
         atp = float(df[(df.layer == L) & (df.neuron == nu)]["nec_frac"].iloc[0])
         rows.append({"direction": "necessity", "layer": L, "neuron": nu, "atp_frac": atp, "exact_frac": ex})
     vdf = pd.DataFrame(rows)
-    vcsv = out_dir / "winoqueer_mlp_atp_vs_exact.csv"
+    vcsv = out_dir / "mlp_atp_vs_exact.csv"
     vdf.to_csv(vcsv, index=False)
 
     # Authoritative neuron list: AtP screens, EXACT decides. Re-rank the verified neurons by the
     # exact effect (a positive AtP neuron that exact-patching flips to <=0 is an AtP false positive).
     ver = vdf.sort_values(["direction", "exact_frac"], ascending=[True, False]).copy()
     ver["atp_false_positive"] = (ver["atp_frac"] > 0) & (ver["exact_frac"] <= 0)
-    vtop = out_dir / "winoqueer_mlp_verified_top.csv"
+    vtop = out_dir / "mlp_verified_top.csv"
     ver.to_csv(vtop, index=False)
 
     fig, ax = plt.subplots(figsize=(8.5, 8))
@@ -456,7 +456,7 @@ def make_verify_plot(df, top_suff, top_nec, suff_exact, nec_exact, out_dir):
     txt = "  |  ".join(f"{d}: r={v[0]:.2f}, ρ={v[1]:.2f}, sign={v[2]*100:.0f}%" for d, v in stats.items())
     ax.set_title("AtP vs exact MLP-neuron patching (top-K)\n" + txt, fontsize=10)
     ax.legend()
-    p = out_dir / "winoqueer_mlp_atp_vs_exact.png"
+    p = out_dir / "mlp_atp_vs_exact.png"
     fig.tight_layout(); fig.savefig(p, dpi=160, bbox_inches="tight"); plt.close(fig)
     return [vcsv, vtop, p], ver, stats
 
@@ -515,9 +515,9 @@ def main() -> None:
                                      args.ablate_positions, group_map=group_map)
 
     df = build_neuron_df(res, n_layers, d_mlp)
-    full_csv = args.out_dir / "winoqueer_mlp_neuron_attribution.csv"
+    full_csv = args.out_dir / "mlp_neuron_attribution.csv"
     df.to_csv(full_csv, index=False)
-    top_csv = args.out_dir / "winoqueer_mlp_neuron_attribution_top.csv"
+    top_csv = args.out_dir / "mlp_neuron_attribution_top.csv"
     df.reindex(df["core_score"].abs().sort_values(ascending=False).index).head(args.top_csv_rows).to_csv(top_csv, index=False)
 
     group_paths = write_group_outputs(group_res, args.out_dir, n_layers, d_mlp, args.top_csv_rows)
