@@ -18,7 +18,7 @@ Views:
   B. head x (axis x dataset) heatmap                -- the broad cross-bias-type view.
   C. same-axis replication scatter                  -- per-head effect, an axis in dataset A vs B.
 
-Each --run is NAME PATCHING_RAW COHORT. WRITE=bias_effect (hook_z sufficiency). READ=attn_readout.
+Each --run is NAME PATCHING_RAW COHORT. WRITE=normalized_restoration (hook_z sufficiency). READ=attn_readout.
 """
 from __future__ import annotations
 
@@ -33,7 +33,12 @@ from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
-WRITE, READ = "bias_effect", "attn_readout_to_identity"
+# WRITE uses normalized_restoration (bias_effect / per-pair denom) so the per-head
+# effect is on a comparable scale ACROSS datasets/identities with different baseline
+# log-prob gaps. This matches every other Stage-7 analysis script; using raw bias_effect
+# here would confound the cross-dataset Pearson scatters (A/C) and shared-vmax heatmaps
+# (B/E) by per-dataset scale. (Panel D is a correlation matrix and is scale-invariant.)
+WRITE, READ = "normalized_restoration", "attn_readout_to_identity"
 ID_PREF = ["identity", "Group_x", "Gender_ID_x"]
 DEFAULT_FOCUS = ["sexual_orientation", "gender_identity", "gender", "orientation"]
 
@@ -51,8 +56,8 @@ def canon_identity(s: str) -> str:
     return _CANON.get(s, s)
 
 
-def load_run(raw_path: Path, cohort_path: Path) -> pd.DataFrame:
-    """-> tidy (layer, head, axis, identity, write, read, n) for one dataset.
+def read_cohort_identity(cohort_path: Path) -> pd.DataFrame:
+    """-> cohort[row_id, axis, identity] with clean, canonicalized identity labels.
 
     Prefers `block` + filters to identity_mapped==True (clean labels incl. binary-sex vs trans for
     gender); else falls back to identity/Group_x/Gender_ID_x. Canonicalizes labels so the same
@@ -69,12 +74,97 @@ def load_run(raw_path: Path, cohort_path: Path) -> pd.DataFrame:
         coh = coh[coh["identity_mapped"].astype(str).str.lower().isin(["true", "1"])]
     coh["identity"] = coh["identity"].map(canon_identity)
     coh = coh[coh["identity"] != coh["axis"].astype(str).str.lower()]  # drop unmapped leftovers
+    return coh[["row_id", "axis", "identity"]]
+
+
+def load_run(raw_path: Path, cohort_path: Path) -> pd.DataFrame:
+    """-> tidy (layer, head, axis, identity, write, read, n) for one dataset."""
+    coh = read_cohort_identity(cohort_path)
     raw = pd.read_csv(raw_path, usecols=["row_id", "layer", "head", WRITE, READ])
-    df = raw.merge(coh[["row_id", "axis", "identity"]], on="row_id", how="inner")
+    df = raw.merge(coh, on="row_id", how="inner")
     g = (df.groupby(["layer", "head", "axis", "identity"])
            .agg(write=(WRITE, "mean"), read=(READ, "mean"), n=(WRITE, "size"))
            .reset_index())
     return g
+
+
+def load_pair_matrices(runs, focus=None, min_n=40):
+    """Per-pair head-effect matrices for the permutation null.
+
+    -> heads (list of (layer,head)), data {name: (X[pairs×H], labels[pairs])}, meta {label:(axis,name)}.
+    Only heads present (NaN-free) in every dataset are kept so identity means and corr are well-defined.
+    Labels are '<identity> · <name>'; identities with < min_n pairs are dropped.
+    """
+    per, head_masks, meta = {}, [], {}
+    for name, raw, coh_path in runs:
+        coh = read_cohort_identity(Path(coh_path))
+        if focus:
+            coh = coh[coh["axis"].astype(str).str.lower().apply(lambda a: any(f in a for f in focus))]
+        id2ax = dict(zip(coh["identity"], coh["axis"].astype(str)))
+        rawdf = pd.read_csv(Path(raw), usecols=["row_id", "layer", "head", WRITE])
+        df = rawdf.merge(coh[["row_id"]], on="row_id", how="inner")  # restrict to kept pairs/axes
+        df = df.merge(coh, on="row_id", how="left")
+        df["hid"] = list(zip(df["layer"].astype(int), df["head"].astype(int)))
+        piv = df.pivot_table(index="row_id", columns="hid", values=WRITE, aggfunc="mean")
+        labels = (coh.set_index("row_id")["identity"].reindex(piv.index).astype(str) + " · " + name)
+        vc = labels.value_counts()
+        keep = labels.isin(vc[vc >= min_n].index).to_numpy()
+        piv, labels = piv[keep], labels[keep]
+        for lab in pd.unique(labels):
+            meta[lab] = (id2ax.get(lab.rsplit(" · ", 1)[0], "?"), name)
+        per[name] = (piv, labels.to_numpy())
+        head_masks.append(set(piv.columns))
+    heads = sorted(set.intersection(*head_masks)) if head_masks else []
+    data = {}
+    for name, (piv, labels) in per.items():
+        X = piv.reindex(columns=heads).to_numpy(float)
+        data[name] = (X, labels)
+    # keep only heads NaN-free across every dataset (head patching is dense, so ~all survive)
+    good = np.ones(len(heads), bool)
+    for X, _ in data.values():
+        good &= ~np.isnan(X).any(axis=0)
+    heads = [h for h, k in zip(heads, good) if k]
+    data = {n: (X[:, good], labs) for n, (X, labs) in data.items()}
+    return heads, data, meta
+
+
+def identity_corr_null(data, meta, n_perm=200, seed=0):
+    """Observed identity×identity Pearson matrix + permutation-null one-sided p-values.
+
+    Null: shuffle identity labels WITHIN each dataset across pairs and recompute every identity's
+    per-head vector, so the baseline is 'two random pair-groups still correlate via the shared global
+    bias signal'. p[i,j] = P(null r >= observed r). Diagonal -> NaN. Also returns the null off-diagonal
+    mean distribution so the figure can show 'expected by chance'.
+    """
+    labels = sorted(meta)
+    L = len(labels)
+
+    def means(assign):  # assign: {name: label-array}
+        V = np.empty((L, next(iter(data.values()))[0].shape[1]))
+        for i, lab in enumerate(labels):
+            name = meta[lab][1]
+            X, _ = data[name]
+            V[i] = X[assign[name] == lab].mean(axis=0)
+        return V
+
+    base = {n: labs for n, (X, labs) in data.items()}
+    Cobs = np.corrcoef(means(base))
+    rs = np.random.RandomState(seed)
+    ge = np.zeros((L, L))
+    null_offdiag = []
+    offmask = ~np.eye(L, dtype=bool)
+    for _ in range(n_perm):
+        assign = {}
+        for n, (X, labs) in data.items():
+            p = labs.copy(); rs.shuffle(p); assign[n] = p
+        Cp = np.corrcoef(means(assign))
+        ge += (Cp >= Cobs)
+        null_offdiag.append(float(np.nanmean(Cp[offmask])))
+    P = (1.0 + ge) / (n_perm + 1.0)
+    np.fill_diagonal(P, np.nan)
+    Cdf = pd.DataFrame(Cobs, index=labels, columns=labels)
+    Pdf = pd.DataFrame(P, index=labels, columns=labels)
+    return Cdf, Pdf, np.array(null_offdiag)
 
 
 def to_axis(tidy: pd.DataFrame, col="write") -> pd.DataFrame:
@@ -118,28 +208,45 @@ def _cluster_order(C: pd.DataFrame):
 
 
 # ---------- centerpiece: identity x identity circuit similarity ----------
-def identity_similarity(tidies: dict, out: Path, focus=None, min_n=40):
-    rows = []  # one wide column per identity: index=(layer,head)
-    meta = {}  # label -> (axis, dataset)
-    for name, t in tidies.items():
-        for (axis, ident), g in t.groupby(["axis", "identity"]):
-            if focus and not any(f in str(axis).lower() for f in focus):
-                continue
-            if int(g["n"].max()) < min_n:
-                continue
-            lab = f"{ident} · {name}"
-            s = g.set_index(["layer", "head"])["write"].rename(lab)
-            rows.append(s)
-            meta[lab] = (str(axis), name)
-    if len(rows) < 3:
-        print(f"identity_similarity: only {len(rows)} identities pass min_n={min_n}"
-              f"{' in focus '+str(focus) if focus else ''}; skipping")
-        return None
-    W = pd.concat(rows, axis=1)
-    C = W.corr()  # pairwise Pearson over the ~1024 heads
+def _stars(p):
+    return "**" if p < 0.01 else ("*" if p < 0.05 else "")
+
+
+def identity_similarity(tidies: dict, out: Path, focus=None, min_n=40, runs=None, n_perm=0):
+    """Identity×identity circuit-similarity matrix. With runs+n_perm>0, adds a within-dataset
+    label-permutation null: cells are starred only where observed r beats the shared-global-signal
+    baseline (* p<.05, ** p<.01), and the title shows the null off-diagonal mean."""
+    P = None; null_off = None
+    if runs and n_perm > 0:
+        heads, data, meta = load_pair_matrices(runs, focus=focus, min_n=min_n)
+        if len(meta) < 3:
+            print(f"identity_similarity: only {len(meta)} identities pass min_n={min_n}; skipping")
+            return None
+        C, P, null_off = identity_corr_null(data, meta, n_perm=n_perm)
+        print(f"  null: {len(meta)} identities over {len(heads)} heads, {n_perm} permutations")
+    else:
+        rows, meta = [], {}
+        for name, t in tidies.items():
+            for (axis, ident), g in t.groupby(["axis", "identity"]):
+                if focus and not any(f in str(axis).lower() for f in focus):
+                    continue
+                if int(g["n"].max()) < min_n:
+                    continue
+                lab = f"{ident} · {name}"
+                rows.append(g.set_index(["layer", "head"])["write"].rename(lab))
+                meta[lab] = (str(axis), name)
+        if len(rows) < 3:
+            print(f"identity_similarity: only {len(rows)} identities pass min_n={min_n}"
+                  f"{' in focus '+str(focus) if focus else ''}; skipping")
+            return None
+        C = pd.concat(rows, axis=1).corr()
+
     order = _cluster_order(C)
     C = C.loc[order, order]
     C.to_csv(out.with_suffix(".csv"))
+    if P is not None:
+        P = P.loc[order, order]
+        P.to_csv(out.with_name(out.stem + "_pval.csv"))
 
     axes_u = sorted({meta[l][0] for l in order})
     apal = {a: plt.cm.tab10(i % 10) for i, a in enumerate(axes_u)}
@@ -154,7 +261,8 @@ def identity_similarity(tidies: dict, out: Path, focus=None, min_n=40):
     for i in range(n):
         for j in range(n):
             v = C.iloc[i, j]
-            ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=6,
+            star = "" if P is None or i == j else _stars(P.iloc[i, j])
+            ax.text(j, i, f"{v:.2f}{star}", ha="center", va="center", fontsize=6,
                     color="white" if abs(v) > 0.55 else "#222")
     # axis + dataset color chips along the left edge
     for i, lab in enumerate(order):
@@ -168,8 +276,14 @@ def identity_similarity(tidies: dict, out: Path, focus=None, min_n=40):
     ax.add_artist(leg1)
     ax.legend(handles=h_ds, title="dataset", loc="upper left", bbox_to_anchor=(1.02, 0.45),
               fontsize=8, frameon=False)
-    ax.set_title("Do these identities use the SAME circuit?\n"
-                 "correlation of per-head WRITE-effect vectors  (1.0 = identical head usage)", fontsize=11)
+    sub = "correlation of per-head WRITE-effect vectors  (1.0 = identical head usage)"
+    if null_off is not None:
+        offmask = ~np.eye(n, dtype=bool)
+        obs_mean = float(np.nanmean(C.to_numpy()[offmask]))
+        lo, hi = np.percentile(null_off, [2.5, 97.5])
+        sub += (f"\nobserved mean off-diag r={obs_mean:.2f}  vs  null {null_off.mean():.2f} "
+                f"[95% {lo:.2f},{hi:.2f}]   * p<.05  ** p<.01 (within-dataset label shuffle)")
+    ax.set_title("Do these identities use the SAME circuit?\n" + sub, fontsize=10)
     fig.colorbar(im, ax=ax, fraction=0.025, pad=0.18).set_label("Pearson r of head-effect vectors")
     fig.tight_layout(); fig.savefig(out, dpi=150, bbox_inches="tight"); plt.close(fig)
     return C
@@ -216,7 +330,7 @@ def head_identity_heatmap(tidies: dict, out: Path, focus=None, min_n=40, top_per
     ax.legend(handles=[Line2D([0], [0], marker="s", ls="", mfc=pal[n], mec="none", label=n) for n in ds_names],
               loc="upper left", bbox_to_anchor=(1.02, 1.0), fontsize=8, frameon=False, title="dataset")
     ax.set_title("WRITE effect per head (rows) x orientation/gender identity (cols)", fontsize=10)
-    fig.colorbar(im, ax=ax, fraction=0.025, pad=0.13).set_label("mean WRITE effect (Δ logP)")
+    fig.colorbar(im, ax=ax, fraction=0.025, pad=0.13).set_label("mean WRITE effect (normalized restoration)")
     fig.tight_layout(); fig.savefig(out, dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
@@ -273,7 +387,7 @@ def head_axis_heatmap(axis_tidies: dict, out: Path, top_per=10):
               loc="upper left", bbox_to_anchor=(1.12, 1.0), fontsize=8, frameon=False, title="dataset")
     ax.set_title("WRITE effect per head (rows) across every axis x dataset (cols)\n"
                  "hot band across a row = head shared across axes/datasets; isolated cell = axis-specific", fontsize=10)
-    fig.colorbar(im, ax=ax, fraction=0.025, pad=0.13).set_label("mean WRITE effect (Δ logP)")
+    fig.colorbar(im, ax=ax, fraction=0.025, pad=0.13).set_label("mean WRITE effect (normalized restoration)")
     fig.tight_layout(); fig.savefig(out, dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
@@ -316,6 +430,8 @@ def main():
                     help="substrings; identity-level views restrict to axes matching these")
     ap.add_argument("--min_n", type=int, default=40, help="min pairs for an identity to be shown")
     ap.add_argument("--top_per", type=int, default=10)
+    ap.add_argument("--n_perm", type=int, default=200,
+                    help="within-dataset label permutations for the significance null (0 = skip)")
     args = ap.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
     focus = [f.lower() for f in args.focus_axes] if args.focus_axes else None
@@ -331,9 +447,11 @@ def main():
         print(f"  {name}: axes={sorted(t['axis'].unique())}\n         identities ({len(ids)}): {ids}")
 
     print("\n--- D: identity x identity circuit similarity (focus cluster) ---")
-    identity_similarity(tidies, args.out_dir / "D_identity_similarity_focus.png", focus=focus, min_n=args.min_n)
+    identity_similarity(tidies, args.out_dir / "D_identity_similarity_focus.png", focus=focus,
+                        min_n=args.min_n, runs=args.run, n_perm=args.n_perm)
     print("--- D-all: identity x identity circuit similarity (ALL axes) ---")
-    identity_similarity(tidies, args.out_dir / "D_identity_similarity_all.png", focus=None, min_n=args.min_n)
+    identity_similarity(tidies, args.out_dir / "D_identity_similarity_all.png", focus=None,
+                        min_n=args.min_n, runs=args.run, n_perm=args.n_perm)
 
     print("--- E: head x identity heatmap (focus cluster) ---")
     head_identity_heatmap(tidies, args.out_dir / "E_head_x_identity_focus.png", focus=focus, min_n=args.min_n)
