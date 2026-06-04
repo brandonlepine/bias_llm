@@ -57,7 +57,7 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_winoqueer_head_ablation import prep_pair, ablate_positions, load_model  # noqa: E402
 from run_winoqueer_resid_patching import continuation_logp  # noqa: E402
-from winoqueer_identity_taxonomy import MIN_CELL, annotate, group_keys_for_row  # noqa: E402
+from winoqueer_identity_taxonomy import MIN_CELL, IDENTITY_AXIS  # noqa: E402
 
 
 # ----------------------------------------------------------------------------- positions / helpers
@@ -296,18 +296,31 @@ def _safe_name(s: str) -> str:
 
 
 def build_group_map(pairs, cohort_csv):
-    """row_id -> list of group keys (axis/identity/axispred/idpred). Source is --cohort_csv if given,
-    else --pairs_csv when it already carries Gender_ID_x + predicate_label_provisional + row_id."""
-    need = ["Gender_ID_x", "predicate_label_provisional", "row_id"]
+    """row_id -> list of '<level>::<value>' group keys, COLUMN-DRIVEN so it works for both schemas:
+      - WinoQueer cohort: identity=Gender_ID_x, axis derived from IDENTITY_AXIS, block=identity
+      - BBQ/CrowS cohort: identity=Group_x, axis/block read from the cohort's own columns
+    Levels emitted: axis, identity, block, axispred (axis|predicate), idpred (identity|predicate).
+    Returns None only if there is genuinely no identity/predicate/row_id to group on."""
     src = None
     if cohort_csv is not None and Path(cohort_csv).exists():
         src = pd.read_csv(cohort_csv)
-    elif all(c in pairs.columns for c in need):
+    elif pairs is not None and "row_id" in pairs.columns:
         src = pairs
-    if src is None or not all(c in src.columns for c in need):
+    if src is None or "row_id" not in src.columns or "predicate_label_provisional" not in src.columns:
         return None
-    src = annotate(src)
-    return {r["row_id"]: group_keys_for_row(r) for _, r in src.iterrows()}
+    id_col = next((c for c in ("Group_x", "Gender_ID_x", "identity") if c in src.columns), None)
+    if id_col is None:
+        return None
+    has_axis, has_block = "axis" in src.columns, "block" in src.columns
+    gm = {}
+    for _, r in src.iterrows():
+        ident = str(r[id_col])
+        axis = str(r["axis"]) if has_axis else str(IDENTITY_AXIS.get(ident, "unknown"))
+        block = str(r["block"]) if has_block else ident
+        pred = str(r["predicate_label_provisional"])
+        gm[r["row_id"]] = [f"axis::{axis}", f"identity::{ident}", f"block::{block}",
+                           f"axispred::{axis}|{pred}", f"idpred::{ident}|{pred}"]
+    return gm
 
 
 def layer_profile(res, n_layers) -> pd.DataFrame:
