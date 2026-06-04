@@ -28,6 +28,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from segmented_circuit_analysis import detect_spec, attach_groups  # noqa: E402
 from winoqueer_identity_taxonomy import pub_style  # noqa: E402
 
+LBL = ""  # dataset label stamped on figures (--label)
+def _save(fig, path, **kw):
+    if LBL:
+        fig.text(0.005, 0.995, LBL, ha="left", va="top", fontsize=10, fontweight="bold", color="#444", bbox=dict(boxstyle="round", fc="#f0f0f0", ec="#ccc", alpha=0.9))
+    fig.savefig(path, **kw); plt.close(fig)
+
 SPAN_ORDER = ["shared_pre", "identity", "shared_post", "continuation"]
 VAL = "normalized_restoration"
 
@@ -61,7 +67,7 @@ def plot_identity_layer_by_axis(long: pd.DataFrame, out_dir: Path, source: str |
     ttl = "Where each axis's bias is injected into the residual stream"
     ax.set_title(ttl + (f"  —  {source}" if source else ""))
     ax.legend(fontsize=8, ncol=2, frameon=False)
-    fig.tight_layout(); fig.savefig(out_dir / f"resid_identity_layer_by_axis{tag}.png"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / f"resid_identity_layer_by_axis{tag}.png")
 
 
 def plot_span_heatmaps(long: pd.DataFrame, out_dir: Path):
@@ -84,7 +90,7 @@ def plot_span_heatmaps(long: pd.DataFrame, out_dir: Path):
         ax.axis("off")
     fig.colorbar(im, ax=axarr.ravel().tolist(), fraction=0.02, pad=0.02).set_label("mean normalized bias_effect", fontsize=8)
     fig.suptitle("Per-axis resid patching: layer × prompt span (where bias enters)", fontsize=12)
-    fig.savefig(out_dir / "resid_span_heatmaps_by_axis.png", bbox_inches="tight"); plt.close(fig)
+    _save(fig, out_dir / "resid_span_heatmaps_by_axis.png", bbox_inches="tight")
 
 
 def main() -> None:
@@ -92,12 +98,15 @@ def main() -> None:
     ap.add_argument("--resid_raw", type=Path, required=True)
     ap.add_argument("--cohort", type=Path, required=True)
     ap.add_argument("--out_dir", type=Path, required=True)
+    ap.add_argument("--label", type=str, default="", help="dataset label stamped on figures")
     ap.add_argument("--identity_col", type=str, default=None)
     ap.add_argument("--axis_col", type=str, default=None)
     ap.add_argument("--block_col", type=str, default=None)
     ap.add_argument("--source_col", type=str, default=None)
     ap.add_argument("--umbrella", type=str, default=None)
     args = ap.parse_args()
+    global LBL
+    LBL = args.label
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     spec = detect_spec(pd.read_csv(args.cohort, nrows=200), args)

@@ -40,6 +40,16 @@ from winoqueer_identity_taxonomy import (  # noqa: E402
 
 CELL = "predicate_label_provisional"
 PALETTE = plt.cm.tab20.colors
+LBL = ""  # dataset label stamped onto every figure (set from --label)
+
+
+def _save(fig, path, **kw):
+    """Stamp the dataset label on the figure, save, close."""
+    if LBL:
+        fig.text(0.005, 0.995, LBL, ha="left", va="top", fontsize=10, fontweight="bold",
+                 color="#444", bbox=dict(boxstyle="round", fc="#f0f0f0", ec="#ccc", alpha=0.9))
+    fig.savefig(path, **kw)
+    plt.close(fig)
 
 
 @dataclass
@@ -203,7 +213,7 @@ def cross_axis_overlap(long: pd.DataFrame, top_k: int, out_dir: Path):
     ax.set_yticks(range(len(axes))); ax.set_yticklabels(axes, fontsize=8)
     ax.set_title(f"Do social AXES share bias-writing heads?\nJaccard of top-{top_k} WRITE heads  ·  null ≈ {nm:.3f}", fontsize=11)
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02).set_label("Jaccard")
-    fig.tight_layout(); fig.savefig(out_dir / "cross_axis_head_jaccard.png"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / "cross_axis_head_jaccard.png")
     return J, nm
 
 
@@ -251,7 +261,7 @@ def fig_read_vs_write(rw: pd.DataFrame, out_dir: Path):
     ax.set_ylabel("READ–WRITE agreement"); ax.legend(frameon=False)
     ax.set_title("Identity-reading ≠ stereotype-writing heads — is the two-stage circuit universal?\n"
                  "low bars on EVERY axis ⇒ the model reads an identity and writes its stereotype with different heads")
-    fig.tight_layout(); fig.savefig(out_dir / "fig_read_vs_write_by_axis.png"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / "fig_read_vs_write_by_axis.png")
 
 
 def fig_axis_layer_profile(long: pd.DataFrame, out_dir: Path):
@@ -266,7 +276,7 @@ def fig_axis_layer_profile(long: pd.DataFrame, out_dir: Path):
     ax.set_xlabel("layer"); ax.set_ylabel("mean positive WRITE effect over heads (normalized)")
     ax.set_title("At what depth does each axis's bias get written?")
     ax.legend(fontsize=8, ncol=2, frameon=False)
-    fig.tight_layout(); fig.savefig(out_dir / "fig_axis_layer_write_profile.png"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / "fig_axis_layer_write_profile.png")
 
 
 def fig_source_agreement(src: pd.DataFrame, out_dir: Path):
@@ -287,7 +297,7 @@ def fig_source_agreement(src: pd.DataFrame, out_dir: Path):
     a2.set_xticks(x); a2.set_xticklabels(s["axis"], rotation=40, ha="right")
     a2.set_ylabel("Jaccard of top-WRITE heads"); a2.set_title(f"Do {srcs[0]} & {srcs[1]} use the SAME heads?")
     fig.suptitle("Cross-dataset corroboration per axis (BBQ template vs CrowS naturalistic)", fontsize=13)
-    fig.tight_layout(); fig.savefig(out_dir / "fig_source_agreement_by_axis.png"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / "fig_source_agreement_by_axis.png")
 
 
 def fig_selectivity_by_axis(sel: pd.DataFrame, out_dir: Path):
@@ -308,7 +318,7 @@ def fig_selectivity_by_axis(sel: pd.DataFrame, out_dir: Path):
     ax.set_ylabel("WRITE selectivity (0=shared across identities, 1=one-identity)")
     ax.set_xticklabels(list(order), rotation=35, ha="right")
     ax.set_title("Within each axis, how identity-specific are the strong bias-writing heads?")
-    fig.tight_layout(); fig.savefig(out_dir / "fig_selectivity_by_axis.png"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / "fig_selectivity_by_axis.png")
 
 
 def fig_heads_by_identity_per_axis(long: pd.DataFrame, gate: set, top_n: int, out_dir: Path):
@@ -339,7 +349,7 @@ def fig_heads_by_identity_per_axis(long: pd.DataFrame, gate: set, top_n: int, ou
     for ax in axarr.ravel()[len(axes):]:
         ax.axis("off")
     fig.suptitle("Per-axis: which heads write which identity's stereotype  (red = writes; columns = identities)", fontsize=13)
-    fig.tight_layout(); fig.savefig(out_dir / "fig_heads_by_identity_per_axis.png", bbox_inches="tight"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / "fig_heads_by_identity_per_axis.png", bbox_inches="tight")
 
 
 def make_figures(long, spec, sel, rw, src, gate, top_k, out_dir):
@@ -365,7 +375,10 @@ def main() -> None:
     ap.add_argument("--gate_frac", type=float, default=0.05)
     ap.add_argument("--gate_min_k", type=int, default=8)
     ap.add_argument("--top_k", type=int, default=10)
+    ap.add_argument("--label", type=str, default="", help="dataset label stamped on every figure (e.g. 'BBQ+CrowS')")
     args = ap.parse_args()
+    global LBL
+    LBL = args.label
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     spec = detect_spec(pd.read_csv(args.cohort, nrows=200), args)

@@ -29,6 +29,12 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from winoqueer_identity_taxonomy import IDENTITY_AXIS, selectivity, jaccard, random_jaccard_null, pub_style  # noqa: E402
 
+LBL = ""  # dataset label stamped on figures (--label)
+def _save(fig, path, **kw):
+    if LBL:
+        fig.text(0.005, 0.995, LBL, ha="left", va="top", fontsize=10, fontweight="bold", color="#444", bbox=dict(boxstyle="round", fc="#f0f0f0", ec="#ccc", alpha=0.9))
+    fig.savefig(path, **kw); plt.close(fig)
+
 
 def parse_group(g: str) -> tuple[str, str]:
     level, _, val = str(g).partition("::")
@@ -77,7 +83,7 @@ def fig_axis_layer_profile(in_dir: Path, out_dir: Path):
         ax.set_title(f"{ttl} — Σ positive neuron attribution"); ax.set_xlabel("layer")
         ax.set_ylabel("summed positive neuron attribution (frac of bias gap)"); ax.legend(fontsize=7, ncol=2, frameon=False)
     fig.suptitle("Where each axis's bias is written / needed at the NEURON level", fontsize=13)
-    fig.tight_layout(); fig.savefig(out_dir / "mlp_axis_layer_profile.png"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / "mlp_axis_layer_profile.png")
 
 
 def fig_cross_axis_neuron_jaccard(allg: pd.DataFrame, metric: str, top_k: int, out_dir: Path):
@@ -106,7 +112,7 @@ def fig_cross_axis_neuron_jaccard(allg: pd.DataFrame, metric: str, top_k: int, o
     a.set_yticks(range(len(axes))); a.set_yticklabels(axes, fontsize=8)
     a.set_title(f"Do social axes share bias NEURONS?\nJaccard of top-{top_k} {metric} neurons  ·  null ≈ {nm:.3f}", fontsize=11)
     fig.colorbar(im, ax=a, fraction=0.046, pad=0.02).set_label("Jaccard")
-    fig.tight_layout(); fig.savefig(out_dir / "mlp_cross_axis_neuron_jaccard.png"); plt.close(fig)
+    fig.tight_layout(); _save(fig, out_dir / "mlp_cross_axis_neuron_jaccard.png")
     return J, nm
 
 
@@ -143,7 +149,7 @@ def within_axis_identity_selectivity(allg: pd.DataFrame, id2ax: dict, metric: st
         ax.set_ylabel("neuron selectivity (0=shared, 1=one-identity)")
         ax.set_xticklabels(list(order), rotation=35, ha="right")
         ax.set_title("Within each axis, how identity-specific are the bias NEURONS?")
-        fig.tight_layout(); fig.savefig(out_dir / "mlp_selectivity_by_axis.png"); plt.close(fig)
+        fig.tight_layout(); _save(fig, out_dir / "mlp_selectivity_by_axis.png")
     return sel
 
 
@@ -152,9 +158,12 @@ def main() -> None:
     ap.add_argument("--in_dir", type=Path, required=True, help="dir with the per-group MLP CSVs")
     ap.add_argument("--cohort", type=Path, required=True, help="cohort (for identity->axis mapping)")
     ap.add_argument("--out_dir", type=Path, required=True)
+    ap.add_argument("--label", type=str, default="", help="dataset label stamped on figures")
     ap.add_argument("--metric", choices=["suff_frac", "nec_frac"], default="suff_frac")
     ap.add_argument("--top_k", type=int, default=50)
     args = ap.parse_args()
+    global LBL
+    LBL = args.label
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     allg = load_groups(args.in_dir)
