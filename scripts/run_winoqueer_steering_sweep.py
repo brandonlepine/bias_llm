@@ -325,6 +325,9 @@ def main() -> None:
                     help="max readout KL for a steering point to count as fluency-safe when picking the best operating point")
     ap.add_argument("--patch_profile_csv", type=Path, default=None,
                     help="resid-patching layer profile CSV for the layer cross-check plot")
+    ap.add_argument("--save_vectors", type=Path, default=None,
+                    help="persist the learned per-layer difference-of-means vectors (.pt) so they "
+                         "can be applied OOD (e.g. to the BBQ QA task by run_bbq_steering_transfer.py)")
     ap.add_argument("--plot_only", action="store_true")
     args = ap.parse_args()
 
@@ -354,6 +357,21 @@ def main() -> None:
         layers = [int(x) for x in args.layers.split(",")] if args.layers else list(range(n_layers))
 
         vectors, norms = build_vectors(model, tokenizer, device, train_pairs, args.vector_position, n_layers)
+        if args.save_vectors:
+            # Persist the directions (+ provenance) so they can be injected into OTHER tasks. The
+            # vector lives in resid_pre[L] space; applying it to BBQ's resid_pre[L] is the OOD test.
+            args.save_vectors.parent.mkdir(parents=True, exist_ok=True)
+            torch.save({
+                "vectors": vectors,                       # [n_layers, d_model], float32
+                "norms": norms,                           # [n_layers]
+                "vector_position": args.vector_position,
+                "tl_model_name": args.tl_model_name,
+                "n_layers": n_layers,
+                "n_train_pairs": int(len(train_pairs)),
+                "train_identity_counts": train_pairs["Gender_ID_x"].value_counts().to_dict(),
+                "pairs_csv": str(args.pairs_csv),
+            }, args.save_vectors)
+            print(f"Saved steering vectors -> {args.save_vectors}")
         # Several norm-matched random directions (not one) so the control isn't at the mercy of a
         # single draw coincidentally aligning with the bias direction.
         rand_vectors_list = ([random_matched(vectors, norms, seed_offset=s) for s in range(args.n_random_seeds)]
