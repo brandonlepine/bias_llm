@@ -42,15 +42,18 @@ from winoqueer_identity_taxonomy import pub_style, jaccard, random_jaccard_null 
 # across datasets (WinoQueer calls it gender_identity; BBQ/CrowS call it gender). Unmapped axes
 # pass through unchanged (e.g. WinoQueer 'umbrella' has no BBQ analog and stays its own axis).
 CANON = {
-    "gender_identity": "gender", "gender": "gender",
+    # gender_identity = trans/NB identity bias: WinoQueer's gender axis lines up with the BBQ/CrowS
+    # trans subset. gender_binary = cis man/woman role bias (BBQ/CrowS only) — kept SEPARATE so the
+    # two gender constructs are not merged. Legacy bare `gender` (pre-split cohorts) -> binary.
+    "gender_identity": "gender_identity", "gender": "gender_binary", "gender_binary": "gender_binary",
     "sexual_orientation": "sexual_orientation", "orientation": "sexual_orientation",
     "race_ethnicity": "race", "race": "race",
     "ses": "socioeconomic", "socioeconomic": "socioeconomic",
     "disability_status": "disability", "disability": "disability",
 }
 # Shared categorical order so a given axis keeps the same colour/slot in every dataset.
-AXIS_ORDER = ["sexual_orientation", "gender", "race", "religion", "age", "nationality",
-              "socioeconomic", "physical_appearance", "disability", "umbrella"]
+AXIS_ORDER = ["sexual_orientation", "gender_identity", "gender_binary", "race", "religion", "age",
+              "nationality", "socioeconomic", "physical_appearance", "disability", "umbrella"]
 
 
 def canon(a) -> str:

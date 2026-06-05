@@ -31,8 +31,8 @@ from winoqueer_identity_taxonomy import pub_style, jaccard, random_jaccard_null 
 # Shared categorical axis order so a given axis occupies the same slot / colour in EVERY dataset's
 # bar group and line. (Value-sorting per dataset made the same axis unalignable across blocks.)
 # Unknown axes sort last, alphabetically.
-AXIS_ORDER = ["sexual_orientation", "orientation", "gender_identity", "gender", "race",
-              "race_ethnicity", "religion", "age", "nationality", "socioeconomic", "ses",
+AXIS_ORDER = ["sexual_orientation", "orientation", "gender_identity", "gender", "gender_binary",
+              "race", "race_ethnicity", "religion", "age", "nationality", "socioeconomic", "ses",
               "physical_appearance", "disability", "disability_status"]
 
 
