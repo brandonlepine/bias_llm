@@ -28,6 +28,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from winoqueer_identity_taxonomy import pub_style, jaccard, random_jaccard_null  # noqa: E402
 
 
+# Shared categorical axis order so a given axis occupies the same slot / colour in EVERY dataset's
+# bar group and line. (Value-sorting per dataset made the same axis unalignable across blocks.)
+# Unknown axes sort last, alphabetically.
+AXIS_ORDER = ["sexual_orientation", "orientation", "gender_identity", "gender", "race",
+              "race_ethnicity", "religion", "age", "nationality", "socioeconomic", "ses",
+              "physical_appearance", "disability", "disability_status"]
+
+
+def axis_rank(a):
+    a = str(a)
+    return (AXIS_ORDER.index(a) if a in AXIS_ORDER else len(AXIS_ORDER), a)
+
+
+def order_axes(values):
+    return sorted(set(map(str, values)), key=axis_rank)
+
+
 def load(dirs: dict[str, Path]) -> dict[str, dict]:
     out = {}
     for label, d in dirs.items():
@@ -50,7 +67,8 @@ def fig_read_vs_write_all(data, out_dir):
     df = pd.DataFrame(rows)
     if df.empty:
         return
-    df = df.sort_values(["label", "val"])
+    df["axis"] = pd.Categorical(df["axis"], categories=order_axes(df["axis"]), ordered=True)
+    df = df.sort_values(["label", "axis"])
     labels = list(df["label"].unique())
     cmap = {lab: plt.cm.Set1(i) for i, lab in enumerate(labels)}
     xs = []
@@ -81,7 +99,8 @@ def fig_selectivity_all(data, out_dir):
     df = pd.DataFrame(rows)
     if df.empty:
         return
-    df = df.sort_values(["label", "median_sel"])
+    df["axis"] = pd.Categorical(df["axis"], categories=order_axes(df["axis"]), ordered=True)
+    df = df.sort_values(["label", "axis"])
     labels = list(df["label"].unique())
     cmap = {lab: plt.cm.Set1(i) for i, lab in enumerate(labels)}
     xs = []; pos = 0
@@ -133,17 +152,19 @@ def fig_axis_layer_profiles(data, out_dir):
     pub_style()
     fig, ax = plt.subplots(figsize=(11, 6.5))
     styles = {lab: ls for lab, ls in zip(data, ["-", "--", ":"])}
-    i = 0
+    # colour keyed by axis (shared across datasets) so the SAME axis is the same colour in both
+    # datasets; line style encodes the dataset.
+    all_axes = order_axes({a for d in data.values() if not d["axis"].empty for a in d["axis"]["group"]})
+    acolor = {a: plt.cm.tab20(k % 20) for k, a in enumerate(all_axes)}
     for label, d in data.items():
         if d["axis"].empty:
             continue
         prof = d["axis"].assign(w=d["axis"]["write"].clip(lower=0)).groupby(["group", "layer"])["w"].mean().reset_index()
-        for axis, g in prof.groupby("group"):
-            g = g.sort_values("layer")
-            ax.plot(g["layer"], g["w"], styles[label], lw=1.6, color=plt.cm.tab20(i % 20), label=f"{label}:{axis}")
-            i += 1
+        for axis in order_axes(prof["group"]):
+            g = prof[prof["group"].astype(str) == axis].sort_values("layer")
+            ax.plot(g["layer"], g["w"], styles[label], lw=1.6, color=acolor[axis], label=f"{label}:{axis}")
     ax.set_xlabel("layer"); ax.set_ylabel("mean positive WRITE over heads")
-    ax.set_title("Where each axis writes bias, across datasets (line style = dataset)")
+    ax.set_title("Where each axis writes bias, across datasets (colour = axis, line style = dataset)")
     ax.legend(fontsize=6, ncol=3, frameon=False)
     fig.tight_layout(); fig.savefig(out_dir / "compare_axis_layer_profiles.png"); plt.close(fig)
 

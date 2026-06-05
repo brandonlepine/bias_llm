@@ -50,14 +50,20 @@ def main() -> None:
     summ = summ.sort_values("mean_bias", ascending=False)
     summ.to_csv(args.out_summary, index=False)
 
-    keep_mask = summ["resisted"] if args.keep_resisted else ~summ["resisted"]
-    keep_stereo = set(map(tuple, summ.loc[(summ["resisted"] == False) | args.keep_resisted, KEY].itertuples(index=False)))
-    if not args.keep_resisted:
-        keep_stereo = set(map(tuple, summ.loc[~summ["resisted"], KEY].itertuples(index=False)))
+    # Two mutually-exclusive modes, selected by --keep_resisted:
+    #   default            -> stereotypes the model ADOPTS (mean_bias >= 0); keep their
+    #                         stereotype-consistent pairs (bias_score > 0).
+    #   --keep_resisted    -> stereotypes the model RESISTS (mean_bias < 0); keep the pairs
+    #                         that show the resistance (bias_score < 0). This is a separate
+    #                         analysis set, NOT mixed into the adopted-stereotype candidates.
+    stereo_mask = summ["resisted"] if args.keep_resisted else ~summ["resisted"]
+    keep_stereo = set(map(tuple, summ.loc[stereo_mask, KEY].itertuples(index=False)))
     d["_key"] = list(zip(*[d[k] for k in KEY]))
     fmask = ~d["frame"].isin(DROP_FRAMES) if DROP_FRAMES else pd.Series(True, index=d.index)
-    cand = d[fmask & (d["bias_score"] > 0) & (d["_key"].isin(keep_stereo))].drop(columns="_key")
-    cand = cand.sort_values("bias_score", ascending=False).reset_index(drop=True)
+    bias_gate = (d["bias_score"] < 0) if args.keep_resisted else (d["bias_score"] > 0)
+    cand = d[fmask & bias_gate & (d["_key"].isin(keep_stereo))].drop(columns="_key")
+    # strongest signal first in either mode: most-positive (adopted) or most-negative (resisted)
+    cand = cand.sort_values("bias_score", ascending=args.keep_resisted).reset_index(drop=True)
     cand.to_csv(args.out_final, index=False)
 
     for cat, g in cand.groupby("category"):

@@ -98,6 +98,12 @@ def fig_cross_axis_neuron_jaccard(allg: pd.DataFrame, metric: str, top_k: int, o
         for b in axes:
             J.loc[a, b] = jaccard(sets[a], sets[b])
     J.to_csv(out_dir / "mlp_cross_axis_neuron_jaccard.csv")
+    # INTERPRETATION NOTE: the null pool is the union of the per-group TOP-TRIMMED neurons that
+    # appear in these CSVs, not the model's full neuron space (n_layers * d_mlp). A smaller pool
+    # raises the random-overlap baseline, so this null is CONSERVATIVE: observed cross-axis Jaccard
+    # is compared against an inflated chance level, which can UNDERSTATE true neuron sharing but
+    # will not manufacture false sharing. (Heads use the full 1024-head pool, so head-Jaccard nulls
+    # are honest; only the neuron null is trimmed because raw per-neuron data isn't retained.)
     pool = int(ax["ln"].nunique())
     nm, _ = random_jaccard_null(pool, top_k)
     M = J.to_numpy(float); off = M.copy(); np.fill_diagonal(off, np.nan)

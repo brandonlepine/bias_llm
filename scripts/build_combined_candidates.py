@@ -47,6 +47,9 @@ def main() -> None:
     args = ap.parse_args()
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
+    # BBQ arrives already curated to bias_score>0 (finalize_bbq_candidates.py); CrowS is
+    # filtered to the same bias_score>min_bias criterion here. Same inclusion rule, applied
+    # at whichever step each dataset is built.
     bbq = harmonize(pd.read_csv(args.bbq), "bbq")
     crows_path = args.crows_scored or Path(sorted(glob.glob("pod_results/**/crows_pairs_scored.csv", recursive=True))[-1])
     crows_all = pd.read_csv(crows_path)

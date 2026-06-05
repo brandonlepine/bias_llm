@@ -10,12 +10,21 @@ Known caveats (Blodgett et al. 2021, "Stereotyping Norwegian Salmon"): CrowS-Pai
 noise — some pairs differ in MORE than the identity, some are mislabeled. Mitigations here:
   - keep only a SINGLE short contiguous difference (drops multi-difference items);
   - require a non-trivial shared suffix after the identity (so there is something to score);
-  - keep only `stereo` items (sent_more = stereotype) for a clean bias direction;
+  - the MAIN set is `stereo` items only (sent_more = stereotype) for a clean bias direction;
   - tag everything `source=crows-pairs` so it stays separable from BBQ in analysis.
 These are SUPPLEMENTARY identity-level power, cross-checked against BBQ — not a standalone claim.
 
-Output: data/crows-pairs/crows_pairs_prompts.csv  (sent_x/sent_y/prefix_x/prefix_y/continuation/
-        Group_x/Group_y/axis/predicate_label_provisional/frame/source/stereo_antistereo)
+Antistereo handling: `antistereo` items pass through the SAME validity filters but are written
+to a SEPARATE file (--antistereo_out), never mixed into the main analysis set. They are kept
+(not discarded) for a later, separate stereo-vs-antistereo comparison. NOTE the bias direction
+is flipped for these: Group_x comes from sent_more, which for an antistereo pair is the
+*anti*-stereotypical sentence — so any comparison that pools them with stereo must reverse sign.
+
+Output:
+  data/crows-pairs/crows_pairs_prompts.csv             (stereo; main analysis set)
+  data/crows-pairs/crows_pairs_prompts_antistereo.csv  (antistereo; separate comparison set)
+  columns: sent_x/sent_y/prefix_x/prefix_y/continuation/Group_x/Group_y/axis/
+           predicate_label_provisional/frame/source/stereo_antistereo
 """
 from __future__ import annotations
 
@@ -86,21 +95,23 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Extract scorable minimal pairs from CrowS-Pairs.")
     ap.add_argument("--crows_csv", type=Path, default=Path("data/crows-pairs/crows-pairs.csv"))
     ap.add_argument("--out", type=Path, default=Path("data/crows-pairs/crows_pairs_prompts.csv"))
+    ap.add_argument("--antistereo_out", type=Path,
+                    default=Path("data/crows-pairs/crows_pairs_prompts_antistereo.csv"),
+                    help="separate output for antistereo items (never mixed into the main set)")
     ap.add_argument("--max_identity_words", type=int, default=4, help="drop multi-difference items (long diff span)")
     ap.add_argument("--min_suffix_words", type=int, default=3, help="require this many shared words after the identity")
-    ap.add_argument("--keep_antistereo", action="store_true", help="also keep antistereo items (direction flipped)")
     args = ap.parse_args()
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.antistereo_out.parent.mkdir(parents=True, exist_ok=True)
 
     d = pd.read_csv(args.crows_csv)
-    rows, drop = [], {"axis": 0, "antistereo": 0, "no_single_span": 0, "long_identity": 0, "short_suffix": 0}
+    rows, anti_rows = [], []
+    drop = {"axis": 0, "no_single_span": 0, "long_identity": 0, "short_suffix": 0}
     for i, r in d.iterrows():
         axis = AXIS_MAP.get(str(r.get("bias_type", "")).strip())
         if axis is None:
             drop["axis"] += 1; continue
         sa = str(r.get("stereo_antistereo", "stereo")).strip()
-        if sa != "stereo" and not args.keep_antistereo:
-            drop["antistereo"] += 1; continue
         wx, wy = words(r["sent_more"]), words(r["sent_less"])
         P, S = common_prefix(wx, wy), common_suffix(wx, wy)
         S = min(S, len(wx) - P, len(wy) - P)  # don't let prefix/suffix overlap
@@ -111,11 +122,13 @@ def main() -> None:
             drop["long_identity"] += 1; continue
         if S < args.min_suffix_words:
             drop["short_suffix"] += 1; continue
-        # target = sent_more's identity (stereo); for antistereo the direction is reversed (flag kept)
+        # Group_x = sent_more's identity. For stereo, sent_more is the stereotype (clean
+        # direction). For antistereo, sent_more is the ANTI-stereotypical sentence, so the bias
+        # direction is reversed — these go to a separate file and must be sign-handled later.
         cont = " ".join(wy[len(wy) - S:])
         canon_x, mapped_x = clean_identity(axis, " ".join(idx))
         canon_y, mapped_y = clean_identity(axis, " ".join(idy))
-        rows.append({
+        rec = {
             "row_id": int(i), "source": "crows-pairs", "category": axis, "axis": axis, "block": axis,
             "Group_x": canon_x, "Group_y": canon_y, "identity_mapped": bool(mapped_x and mapped_y),
             "Group_x_raw": " ".join(idx), "Group_y_raw": " ".join(idy),
@@ -123,18 +136,23 @@ def main() -> None:
             "predicate": cont, "continuation": cont,
             "prefix_x": " ".join(wx[:len(wx) - S]), "prefix_y": " ".join(wy[:len(wy) - S]),
             "sent_x": str(r["sent_more"]).strip(), "sent_y": str(r["sent_less"]).strip(),
-        })
+        }
+        (anti_rows if sa == "antistereo" else rows).append(rec)
     out = pd.DataFrame(rows)
     out.to_csv(args.out, index=False)
-    print(f"CrowS-Pairs rows: {len(d)} -> {len(out)} scorable prompts")
+    anti = pd.DataFrame(anti_rows)
+    anti.to_csv(args.antistereo_out, index=False)
+    print(f"CrowS-Pairs rows: {len(d)} -> stereo: {len(out)} (main), antistereo: {len(anti)} (separate)")
     print("dropped:", drop)
-    print("\nkept per axis:")
+    print(f"\nmain set -> {args.out}")
+    print("kept per axis (stereo):")
     print(out.groupby("axis").size().sort_values(ascending=False).to_string())
     print(f"\nidentity-mapped (clean, usable per-identity): {int(out['identity_mapped'].sum())}/{len(out)}")
     print("\ncanonical identity terms per axis (top, mapped):")
     for ax, g in out.groupby("axis"):
         top = g[g["identity_mapped"]]["Group_x"].value_counts().head(5).to_dict()
         print(f"  {ax:20s} {top}")
+    print(f"\nantistereo set (separate, sign-flipped) -> {args.antistereo_out}")
 
 
 if __name__ == "__main__":

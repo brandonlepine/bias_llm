@@ -144,6 +144,11 @@ def plot_neuron_jaccard(wide: pd.DataFrame, top_k: int, metric: str, out_dir: Pa
         for b in ids:
             J.loc[a, b] = jaccard(topsets[a], topsets[b])
     J.to_csv(out_dir / "segmented_mlp_neuron_jaccard.csv")
+    # INTERPRETATION NOTE: pool = union of the top-trimmed neurons across identities, NOT the full
+    # neuron space (n_layers * d_mlp). The smaller pool inflates the random-overlap baseline, so
+    # this null is CONSERVATIVE — it can understate true cross-identity neuron sharing but won't
+    # invent sharing. (Consistent with segmented_mlp_circuit_analysis.py so the WinoQueer and
+    # generalized neuron-sharing numbers stay comparable to each other.)
     pool = int(pd.Index([n for s in topsets.values() for n in s]).nunique())
     nm, nsd = random_jaccard_null(pool, top_k)
 

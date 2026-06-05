@@ -55,7 +55,7 @@ from run_winoqueer_resid_patching import continuation_logp  # noqa: E402
 
 
 RAW_HEADER = [
-    "row_id", "pair_id", "eval_set", "kind", "layer", "alpha",
+    "row_id", "pair_id", "eval_set", "kind", "rand_seed", "layer", "alpha",
     "Gender_ID_x", "Gender_ID_y", "predicate", "predicate_label_provisional",
     "control_base", "queer_base", "steered_cont_avg_logp", "bias_fraction", "kl_readout",
 ]
@@ -115,8 +115,12 @@ def random_matched(vectors, norms, seed_offset=0):
 
 
 @torch.no_grad()
-def eval_pair(model, p, eval_set, vectors, rand_vectors, alphas, layers, kinds, device):
-    """For one pair: sweep (kind, layer, alpha). One batched forward per (kind, layer)."""
+def eval_pair(model, p, eval_set, vectors, rand_vectors_list, alphas, layers, kinds, device):
+    """For one pair: sweep (kind, layer, alpha). One batched forward per (kind, seed, layer).
+
+    The "random" control averages over rand_vectors_list (several norm-matched random directions);
+    a single random draw could coincidentally align with the bias direction, so we use several and
+    let the downstream median pool over (pairs × seeds)."""
     from transformer_lens import utils as tl_utils
     ids, cont_start, cont_count, pos, readout = readout_and_cont(p, eval_set)
     # per-pair baselines (both prompts, regardless of which we steer)
@@ -131,34 +135,36 @@ def eval_pair(model, p, eval_set, vectors, rand_vectors, alphas, layers, kinds, 
     B = len(alphas)
     out = []
     for kind in kinds:
-        src = vectors if kind == "real" else rand_vectors
-        for L in layers:
-            name = tl_utils.get_act_name("resid_pre", L)
-            vec = src[L].to(device)
+        srcs = [vectors] if kind == "real" else rand_vectors_list
+        for si, src in enumerate(srcs):
+            rseed = -1 if kind == "real" else si
+            for L in layers:
+                name = tl_utils.get_act_name("resid_pre", L)
+                vec = src[L].to(device)
 
-            def hook(act, hook, pos=pos, vec=vec, a_t=a_t):
-                act = act.clone()
-                act[:, pos, :] = act[:, pos, :] + a_t.view(-1, 1, 1).to(act.dtype) * vec.to(act.dtype)
-                return act
+                def hook(act, hook, pos=pos, vec=vec, a_t=a_t):
+                    act = act.clone()
+                    act[:, pos, :] = act[:, pos, :] + a_t.view(-1, 1, 1).to(act.dtype) * vec.to(act.dtype)
+                    return act
 
-            logits = model.run_with_hooks(ids.repeat(B, 1), fwd_hooks=[(name, hook)])
-            sums = continuation_logp(logits, ids[0], cont_start) / cont_count  # [B]
-            # KL(steered || unsteered) at the readout position
-            lp = torch.log_softmax(logits[:, readout, :].float(), dim=-1)  # [B,V]
-            ref = lp[i0:i0 + 1]
-            kl = (lp.exp() * (lp - ref)).sum(-1)  # [B]
-            for j, a in enumerate(alphas):
-                steered = float(sums[j].item())
-                out.append({
-                    "row_id": p_rowid(p), "pair_id": None, "eval_set": eval_set, "kind": kind,
-                    "layer": L, "alpha": a,
-                    "Gender_ID_x": p["meta"]["Gender_ID_x"], "Gender_ID_y": p["meta"]["Gender_ID_y"],
-                    "predicate": p["meta"]["predicate"], "predicate_label_provisional": p["meta"]["predicate_label_provisional"],
-                    "control_base": control_base, "queer_base": queer_base,
-                    "steered_cont_avg_logp": steered,
-                    "bias_fraction": (steered - control_base) / denom,
-                    "kl_readout": float(kl[j].item()),
-                })
+                logits = model.run_with_hooks(ids.repeat(B, 1), fwd_hooks=[(name, hook)])
+                sums = continuation_logp(logits, ids[0], cont_start) / cont_count  # [B]
+                # KL(steered || unsteered) at the readout position
+                lp = torch.log_softmax(logits[:, readout, :].float(), dim=-1)  # [B,V]
+                ref = lp[i0:i0 + 1]
+                kl = (lp.exp() * (lp - ref)).sum(-1)  # [B]
+                for j, a in enumerate(alphas):
+                    steered = float(sums[j].item())
+                    out.append({
+                        "row_id": p_rowid(p), "pair_id": None, "eval_set": eval_set, "kind": kind,
+                        "rand_seed": rseed, "layer": L, "alpha": a,
+                        "Gender_ID_x": p["meta"]["Gender_ID_x"], "Gender_ID_y": p["meta"]["Gender_ID_y"],
+                        "predicate": p["meta"]["predicate"], "predicate_label_provisional": p["meta"]["predicate_label_provisional"],
+                        "control_base": control_base, "queer_base": queer_base,
+                        "steered_cont_avg_logp": steered,
+                        "bias_fraction": (steered - control_base) / denom,
+                        "kl_readout": float(kl[j].item()),
+                    })
     return out
 
 
@@ -173,10 +179,17 @@ def attach_meta(prep, row):
 
 
 def stratified_split(pairs, train_frac, seed=0):
-    """Predicate-stratified train/test split with a fixed (RNG-free) interleave."""
+    """Predicate-stratified train/test split, shuffled within each predicate group (seeded).
+
+    Pairs arrive sorted by bias_score upstream; without the shuffle the first `cut` rows of each
+    group (= the highest-bias pairs) would all go to train and the lower-bias ones to test, a
+    systematic distribution shift. Shuffling within the group removes that while staying
+    deterministic for a fixed seed."""
+    rng = np.random.default_rng(seed)
     train_idx, test_idx = [], []
     for _, g in pairs.groupby("predicate", sort=True):
         idx = list(g.index)
+        rng.shuffle(idx)
         cut = int(round(len(idx) * train_frac))
         if len(idx) >= 2 and 0.0 < train_frac < 1.0:
             cut = min(max(cut, 1), len(idx) - 1)  # both splits get >=1 when the group allows
@@ -203,25 +216,28 @@ def heatmap(piv, png, title, cbar, center1=False):
 def make_outputs(raw: pd.DataFrame, out_dir: Path, patch_profile_csv: Path | None, kl_budget: float = 0.5):
     paths = []
     real = raw[raw.kind == "real"]
-    # 1. layer x alpha heatmaps of mean bias_fraction, per eval_set
+    # 1. layer x alpha heatmaps of bias_fraction, per eval_set. We aggregate across pairs with
+    #    the MEDIAN: bias_fraction = effect / (queer_base - control_base) is a per-pair ratio,
+    #    so a pair with a tiny baseline gap can blow up its ratio and dominate a mean; the
+    #    median is robust to that heavy tail. (KL stays a mean — it has no small denominator.)
     best = {}
     for es in ["control", "queer"]:
         sub = real[real.eval_set == es]
         if sub.empty:
             continue
-        piv = sub.groupby(["layer", "alpha"])["bias_fraction"].mean().unstack("alpha").sort_index()
+        piv = sub.groupby(["layer", "alpha"])["bias_fraction"].median().unstack("alpha").sort_index()
         piv.to_csv(out_dir / f"steering_layer_alpha_{es}.csv")
         title = ("INDUCE: add +alpha*v to CONTROL prompts (1=fully biased)" if es == "control"
                  else "REMOVE: add alpha*v to QUEER prompts (alpha<0 de-biases)")
         heatmap(piv, out_dir / f"steering_layer_alpha_{es}.png", f"WinoQueer steering — {title}",
-                "mean bias_fraction", center1=True)
+                "median bias_fraction", center1=True)
         paths += [out_dir / f"steering_layer_alpha_{es}.csv", out_dir / f"steering_layer_alpha_{es}.png"]
         # best layer for this regime — closest to target AMONG fluency-safe points (KL<=budget)
         if es == "control":   # induce toward 1 via alpha>0
             cand, target = sub[sub.alpha > 0], 1.0
         else:                 # de-bias toward 0 via alpha<0
             cand, target = sub[sub.alpha < 0], 0.0
-        g = cand.groupby(["layer", "alpha"]).agg(bias=("bias_fraction", "mean"), kl=("kl_readout", "mean"))
+        g = cand.groupby(["layer", "alpha"]).agg(bias=("bias_fraction", "median"), kl=("kl_readout", "mean"))
         safe = g[g["kl"] <= kl_budget]
         pick = safe if not safe.empty else g  # fall back if nothing under budget
         if not pick.empty:
@@ -235,12 +251,13 @@ def make_outputs(raw: pd.DataFrame, out_dir: Path, patch_profile_csv: Path | Non
         bl = int(best[es][0])
         fig, ax = plt.subplots(figsize=(8.5, 5.5))
         for kind, color in [("real", "#c0392b"), ("random", "#888888")]:
-            s = sub[(sub.kind == kind) & (sub.layer == bl)].groupby("alpha")["bias_fraction"].agg(["mean", "std", "count"])
-            if s.empty:
+            grp = sub[(sub.kind == kind) & (sub.layer == bl)].groupby("alpha")["bias_fraction"]
+            med = grp.median()
+            if med.empty:
                 continue
-            se = s["std"] / s["count"].clip(lower=1) ** 0.5
-            ax.plot(s.index, s["mean"], "-o", color=color, lw=2, ms=4, label=f"{kind} v")
-            ax.fill_between(s.index, s["mean"] - se, s["mean"] + se, color=color, alpha=0.2)
+            q1, q3 = grp.quantile(0.25), grp.quantile(0.75)  # robust IQR band (matches median)
+            ax.plot(med.index, med.values, "-o", color=color, lw=2, ms=4, label=f"{kind} v")
+            ax.fill_between(med.index, q1.values, q3.values, color=color, alpha=0.2)
         ax.axhline(0, color="#2c7fb8", ls=":", lw=1, label="control baseline (unbiased)")
         ax.axhline(1, color="#c0392b", ls=":", lw=1, label="queer baseline (biased)")
         ax.axvline(0, color="#ccc", lw=0.8)
@@ -251,7 +268,7 @@ def make_outputs(raw: pd.DataFrame, out_dir: Path, patch_profile_csv: Path | Non
 
     # 3. steering frontier: bias change vs KL fluency cost (real, all layers)
     fig, ax = plt.subplots(figsize=(8.5, 7))
-    fr = real.groupby(["eval_set", "layer", "alpha"]).agg(bias=("bias_fraction", "mean"), kl=("kl_readout", "mean")).reset_index()
+    fr = real.groupby(["eval_set", "layer", "alpha"]).agg(bias=("bias_fraction", "median"), kl=("kl_readout", "mean")).reset_index()
     for es, marker in [("control", "o"), ("queer", "s")]:
         s = fr[fr.eval_set == es]
         sc = ax.scatter(s["kl"], s["bias"], c=s["layer"], cmap="viridis", s=22, marker=marker, alpha=0.8, label=f"eval={es}")
@@ -259,7 +276,7 @@ def make_outputs(raw: pd.DataFrame, out_dir: Path, patch_profile_csv: Path | Non
     ax.set_xscale("symlog", linthresh=1e-2)
     ax.axhline(0, color="#2c7fb8", ls=":", lw=1); ax.axhline(1, color="#c0392b", ls=":", lw=1)
     ax.set_xlabel("KL(steered || unsteered) at readout  (fluency cost →)")
-    ax.set_ylabel("mean bias_fraction")
+    ax.set_ylabel("median bias_fraction")
     ax.set_title("Steering frontier — bias control vs distribution distortion\n(want big bias move at low KL)")
     ax.legend(fontsize=8)
     p = out_dir / "steering_frontier.png"
@@ -302,6 +319,8 @@ def main() -> None:
     ap.add_argument("--layers", type=str, default=None, help="comma list; default = all layers")
     ap.add_argument("--eval_sets", type=str, default="control,queer")
     ap.add_argument("--no_random", action="store_true", help="skip the norm-matched random control")
+    ap.add_argument("--n_random_seeds", type=int, default=5,
+                    help="number of norm-matched random directions to average for the control")
     ap.add_argument("--kl_budget", type=float, default=0.5,
                     help="max readout KL for a steering point to count as fluency-safe when picking the best operating point")
     ap.add_argument("--patch_profile_csv", type=Path, default=None,
@@ -335,7 +354,10 @@ def main() -> None:
         layers = [int(x) for x in args.layers.split(",")] if args.layers else list(range(n_layers))
 
         vectors, norms = build_vectors(model, tokenizer, device, train_pairs, args.vector_position, n_layers)
-        rand_vectors = random_matched(vectors, norms)
+        # Several norm-matched random directions (not one) so the control isn't at the mercy of a
+        # single draw coincidentally aligning with the bias direction.
+        rand_vectors_list = ([random_matched(vectors, norms, seed_offset=s) for s in range(args.n_random_seeds)]
+                             if "random" in kinds else [])
 
         with raw_path.open("w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=RAW_HEADER); writer.writeheader()
@@ -347,7 +369,7 @@ def main() -> None:
                     continue
                 p = attach_meta(p, row)
                 for es in eval_sets:
-                    rows = eval_pair(model, p, es, vectors, rand_vectors, alphas, layers, kinds, device)
+                    rows = eval_pair(model, p, es, vectors, rand_vectors_list, alphas, layers, kinds, device)
                     for r in rows:
                         r["pair_id"] = int(pid)
                     writer.writerows(rows)
@@ -365,7 +387,7 @@ def main() -> None:
     for es, (L, a) in best.items():
         regime = "induce→1" if es == "control" else "de-bias→0"
         sub = raw[(raw.kind == "real") & (raw.eval_set == es) & (raw.layer == L) & (raw.alpha == a)]
-        print(f"  eval={es} ({regime}): L{int(L)} alpha={a:g} -> bias_fraction={sub['bias_fraction'].mean():.3f}, "
+        print(f"  eval={es} ({regime}): L{int(L)} alpha={a:g} -> bias_fraction(median)={sub['bias_fraction'].median():.3f}, "
               f"KL={sub['kl_readout'].mean():.3f}")
     print(f"\nruntime_seconds: {time.perf_counter() - started:.2f}")
 

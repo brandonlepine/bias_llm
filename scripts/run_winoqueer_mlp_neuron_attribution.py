@@ -116,14 +116,21 @@ def attribution_forward(model, ids, cont_start, cont_count, pnames, root_name):
 
 def run_attribution(model, tokenizer, device, pairs, pnames, root_name, n_layers, d_mlp, ablate_mode,
                     group_map=None):
-    suff_sum = torch.zeros(n_layers, d_mlp, dtype=torch.float32)
-    nec_sum = torch.zeros(n_layers, d_mlp, dtype=torch.float32)
+    # Pooled ratio estimator: accumulate per-neuron attribution NUMERATORS and the scalar
+    # bias-gap denominator SEPARATELY, then divide once (Σnum / Σdenom). This is robust to the
+    # heavy tail of a mean-of-per-pair-ratios, where a pair with a tiny |denom| (bias gap) would
+    # otherwise blow up its ratio and dominate the average. (A true per-pair median over all
+    # neurons would need ~20GB to hold every pair's [n_layers,d_mlp] map.) Sign-consistency
+    # counters still use the per-pair ratio sign so their meaning is unchanged.
+    suff_num_sum = torch.zeros(n_layers, d_mlp, dtype=torch.float32)
+    nec_num_sum = torch.zeros(n_layers, d_mlp, dtype=torch.float32)
     suff_pos = torch.zeros(n_layers, d_mlp, dtype=torch.float32)   # sign-consistency counters
     nec_pos = torch.zeros(n_layers, d_mlp, dtype=torch.float32)
+    denom_sum = 0.0
     n_used = 0
     skipped = 0
-    # Per-group accumulators: gacc[key] = [suff_sum, nec_sum, suff_pos, nec_pos, n]. Each pair routes
-    # its (already-CPU) attribution into its axis/identity/axispred/idpred groups. ~<1 GB CPU total.
+    # Per-group accumulators: gacc[key] = [suff_num_sum, nec_num_sum, suff_pos, nec_pos, denom_sum, n].
+    # Each pair routes its (already-CPU) numerators into its axis/identity/axispred/idpred groups.
     gacc: dict[str, list] = {}
 
     for _, row in tqdm(pairs.iterrows(), total=len(pairs), desc="AtP (suff+nec)"):
@@ -144,22 +151,26 @@ def run_attribution(model, tokenizer, device, pairs, pnames, root_name, n_layers
             del valc, gradc, valq, gradq
             continue
 
-        suff = torch.empty(n_layers, d_mlp, device=device)
-        nec = torch.empty(n_layers, d_mlp, device=device)
+        suff_num = torch.empty(n_layers, d_mlp, device=device)
+        nec_num = torch.empty(n_layers, d_mlp, device=device)
         for L, name in enumerate(pnames):
             qv, cv = valq[name][0], valc[name][0]          # [Tq,d], [Tc,d]
             cg, qg = gradc[name][0], gradq[name][0]
             # sufficiency: inject queer at control positions, weighted by control-run gradient
-            suff[L] = ((qv[spos_t] - cv[cpos_t]) * cg[cpos_t]).sum(0) / denom
+            suff_num[L] = ((qv[spos_t] - cv[cpos_t]) * cg[cpos_t]).sum(0)
             # necessity: resample control into queer positions, weighted by queer-run gradient
-            nec[L] = (-((cv[csrc] - qv[qpos]) * qg[qpos]).sum(0)) / denom
+            nec_num[L] = -((cv[csrc] - qv[qpos]) * qg[qpos]).sum(0)
 
-        suff_c, nec_c = suff.float().cpu(), nec.float().cpu()
-        suff_pos_c, nec_pos_c = (suff_c > 0).float(), (nec_c > 0).float()
-        suff_sum += suff_c
-        nec_sum += nec_c
+        suff_num_c, nec_num_c = suff_num.float().cpu(), nec_num.float().cpu()
+        # per-pair ratio sign only (for consistency counters); the pooled estimate accumulates
+        # the numerators and divides by Σdenom once at the end.
+        suff_pos_c = ((suff_num_c / denom) > 0).float()
+        nec_pos_c = ((nec_num_c / denom) > 0).float()
+        suff_num_sum += suff_num_c
+        nec_num_sum += nec_num_c
         suff_pos += suff_pos_c
         nec_pos += nec_pos_c
+        denom_sum += denom
         n_used += 1
         if group_map is not None:
             keys = group_map.get(row.get("row_id"))
@@ -168,24 +179,27 @@ def run_attribution(model, tokenizer, device, pairs, pnames, root_name, n_layers
                     ga = gacc.get(key)
                     if ga is None:
                         ga = [torch.zeros(n_layers, d_mlp), torch.zeros(n_layers, d_mlp),
-                              torch.zeros(n_layers, d_mlp), torch.zeros(n_layers, d_mlp), 0]
+                              torch.zeros(n_layers, d_mlp), torch.zeros(n_layers, d_mlp), 0.0, 0]
                         gacc[key] = ga
-                    ga[0] += suff_c; ga[1] += nec_c; ga[2] += suff_pos_c; ga[3] += nec_pos_c; ga[4] += 1
-        del valc, gradc, valq, gradq, suff, nec, suff_c, nec_c, suff_pos_c, nec_pos_c
+                    ga[0] += suff_num_c; ga[1] += nec_num_c; ga[2] += suff_pos_c; ga[3] += nec_pos_c
+                    ga[4] += denom; ga[5] += 1
+        del valc, gradc, valq, gradq, suff_num, nec_num, suff_num_c, nec_num_c, suff_pos_c, nec_pos_c
         if device == "cuda":
             torch.cuda.empty_cache()
 
     print(f"AtP: used {n_used} pairs, skipped {skipped}")
     n = max(n_used, 1)
+    den = denom_sum if abs(denom_sum) > 1e-6 else float("nan")
     res = dict(
-        suff_mean=(suff_sum / n), nec_mean=(nec_sum / n),
+        suff_mean=(suff_num_sum / den), nec_mean=(nec_num_sum / den),  # pooled Σnum/Σdenom fracs
         suff_cons=(suff_pos / n), nec_cons=(nec_pos / n), n_used=n_used,
     )
     group_res = {}
-    for key, (ssum, nsum, spos, npos, gn) in gacc.items():
+    for key, (snum, nnum, spos, npos, gden, gn) in gacc.items():
         if gn == 0:
             continue
-        group_res[key] = dict(suff_mean=ssum / gn, nec_mean=nsum / gn,
+        gd = gden if abs(gden) > 1e-6 else float("nan")
+        group_res[key] = dict(suff_mean=snum / gd, nec_mean=nnum / gd,
                               suff_cons=spos / gn, nec_cons=npos / gn, n_used=gn)
     return res, group_res
 
@@ -204,7 +218,10 @@ def verify_topk(model, tokenizer, device, pairs, pnames, top_suff, top_nec, abla
         return g
 
     suff_groups, nec_groups = layer_groups(top_suff), layer_groups(top_nec)
-    suff_acc = np.zeros(len(top_suff)); nec_acc = np.zeros(len(top_nec)); cnt = 0
+    # Pooled ratio (Σnum/Σdenom), matching run_attribution so the AtP-vs-exact scatter compares
+    # like with like. suff and nec share the same per-pair denom (M_q - M_c).
+    suff_num_acc = np.zeros(len(top_suff)); nec_num_acc = np.zeros(len(top_nec))
+    den_acc = 0.0; cnt = 0
 
     for _, row in tqdm(pairs.iterrows(), total=len(pairs), desc="Exact verify"):
         p = prep_pair(tokenizer, row, device)
@@ -241,7 +258,7 @@ def verify_topk(model, tokenizer, device, pairs, pnames, top_suff, top_nec, abla
                 fwd.append((name, hk))
             logits = model.run_with_hooks(p["c_ids"].repeat(B, 1), fwd_hooks=fwd)
             sums = continuation_logp(logits, p["c_ids"][0], p["c_cont_start"]) / p["cont_count"]
-            suff_acc += ((sums.cpu().numpy() - M_c) / denom)
+            suff_num_acc += (sums.cpu().numpy() - M_c)
 
         # necessity: resample control neuron into the queer run
         if top_nec:
@@ -259,15 +276,17 @@ def verify_topk(model, tokenizer, device, pairs, pnames, top_suff, top_nec, abla
                 fwd.append((name, hk))
             logits = model.run_with_hooks(p["q_ids"].repeat(B, 1), fwd_hooks=fwd)
             sums = continuation_logp(logits, p["q_ids"][0], p["q_cont_start"]) / p["cont_count"]
-            nec_acc += ((M_q - sums.cpu().numpy()) / denom)
+            nec_num_acc += (M_q - sums.cpu().numpy())
 
+        den_acc += denom  # shared denom, once per used pair
         cnt += 1
         del cache, cache_q
         if device == "cuda":
             torch.cuda.empty_cache()
 
     cnt = max(cnt, 1)
-    return suff_acc / cnt, nec_acc / cnt, cnt
+    den = den_acc if abs(den_acc) > 1e-6 else float("nan")
+    return suff_num_acc / den, nec_num_acc / den, cnt
 
 
 # ----------------------------------------------------------------------------- outputs / plots

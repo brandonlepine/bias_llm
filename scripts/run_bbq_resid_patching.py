@@ -156,6 +156,21 @@ def prepare_pairs(pairs_csv: Path, pair_quality: str, context_condition: str, ma
     return pairs.reset_index(drop=True)
 
 
+def pair_key_series(df: pd.DataFrame) -> pd.Series:
+    """Content-stable per-pair identifier for crash-safe resume.
+
+    Positional `pair_id` (the iterrows index) is NOT stable across reruns with a different
+    --max_pairs / --pair_quality / --context_condition or an edited pairs file, so keying
+    resume on it would silently skip/mix the wrong pairs. We key on pair *content* instead.
+    Note minimal-swap pairs have corrupt_example_id == clean_example_id, so the source id
+    alone is not unique — `swap_identities` (plus polarity/context) disambiguates the
+    multiple swaps generated from one source example.
+    """
+    cols = ["clean_example_id", "swap_identities", "question_polarity", "context_condition"]
+    have = [c for c in cols if c in df.columns]
+    return df[have].astype(str).agg("|".join, axis=1)
+
+
 def print_pair_preview(pairs: pd.DataFrame, n: int) -> None:
     n_show = min(n, len(pairs))
     print(f"\nPreviewing {n_show} pairs for metric sanity-check:")
@@ -285,11 +300,21 @@ def assign_spans(tokenizer, prompt: str) -> list[str]:
 
 
 def aggregate_by_span(raw_df: pd.DataFrame, value_col: str) -> pd.DataFrame:
+    """Per-pair SUM of the single-site effect within each (layer, span), then MEAN across pairs.
+
+    The sum is each span's TOTAL causal contribution for that pair: a single causally hot token
+    keeps its full effect and inert tokens add ~0, so a concentrated signal is not diluted by span
+    length (which a plain mean over all positions would do). Averaging the per-pair sums then makes
+    pairs equally weighted regardless of how many tokens their context/options happen to span.
+    (Caveat: summing single-site patches is a first-order attribution, not the effect of patching
+    the whole span jointly — but it is the right 'where does the effect live' localization summary.)
+    """
     df = raw_df.copy()
     df["span"] = pd.Categorical(df["span"], categories=SPAN_ORDER, ordered=True)
+    per_pair = df.groupby(["pair_id", "layer", "span"], observed=True)[value_col].sum()
     return (
-        df.groupby(["layer", "span"], as_index=False, observed=True)[value_col]
-        .mean()
+        per_pair.groupby(["layer", "span"], observed=True).mean()
+        .reset_index()
         .rename(columns={value_col: "value"})
         .sort_values(["layer", "span"])
         .reset_index(drop=True)
@@ -346,9 +371,11 @@ def plot_span_identity_heatmap(
     themselves or by propagation into the shared tokens."""
     df = sub_df.copy()
     df["span"] = pd.Categorical(df["span"], categories=SPAN_ORDER, ordered=True)
+    # Same per-pair SUM then mean-across-pairs reduction as aggregate_by_span, split by whether the
+    # token was a swapped identity token. (Identity + scaffold panels sum back to the main heatmap.)
+    per_pair = df.groupby(["pair_id", "layer", "span", "is_identity_token"], observed=True)[value_col].sum()
     g = (
-        df.groupby(["layer", "span", "is_identity_token"], observed=True)[value_col]
-        .mean()
+        per_pair.groupby(["layer", "span", "is_identity_token"], observed=True).mean()
         .reset_index()
     )
     if g.empty:
@@ -715,6 +742,9 @@ def run_patching(
 ) -> pd.DataFrame:
     from transformer_lens import HookedTransformer, utils as tl_utils
 
+    pairs = pairs.copy()
+    pairs["pair_key"] = pair_key_series(pairs)  # content-stable id for crash-safe resume
+
     device = resolve_device(args.device)
     if device == "mps" and args.dtype == "bfloat16":
         print("MPS + bfloat16 can be unreliable; switching to float16.")
@@ -790,6 +820,7 @@ def run_patching(
 
     raw_header = [
         "pair_id",
+        "pair_key",
         "clean_example_id",
         "corrupt_example_id",
         "question_index",
@@ -818,26 +849,50 @@ def run_patching(
     patch_batch_size = max(1, int(args.patch_batch_size))
 
     # --- Resume / checkpoint: skip pairs already written; per-pair atomic append. ---
+    # Resume is keyed on the content-stable `pair_key`, NOT the positional pair_id, so it
+    # stays correct even when this run uses different --max_pairs/filters or a reordered
+    # pairs file. Legacy raw CSVs (written before pair_key existed) fall back to the old
+    # position-based resume with a loud warning.
+    done_keys: set[str] = set()
     done_pair_ids: set[int] = set()
+    use_key_resume = False
     resume = raw_out_path.exists() and not args.overwrite
     if resume:
         try:
             existing = pd.read_csv(raw_out_path)
         except Exception:
             existing = pd.DataFrame()
-        present = sorted(int(p) for p in existing.get("pair_id", pd.Series([], dtype=int)).dropna().unique())
-        if present:
-            # Drop the last present pair (it may be half-written from a crash) and redo it.
-            done_pair_ids = set(present[:-1])
-            existing[existing["pair_id"].isin(done_pair_ids)].reindex(columns=raw_header).to_csv(
+        if "pair_key" in existing.columns and existing["pair_key"].notna().any():
+            use_key_resume = True
+            ordered = existing["pair_key"].astype(str)
+            # The pair whose rows are physically last may be half-written from a crash:
+            # drop it (every occurrence) and redo it. Order/duplicates don't matter.
+            partial = ordered.iloc[-1]
+            done_keys = set(ordered) - {partial}
+            existing[ordered.isin(done_keys)].reindex(columns=raw_header).to_csv(
                 raw_out_path, index=False
             )
-            print(f"\nResuming from {raw_out_path}: {len(done_pair_ids)} pairs already complete; "
-                  f"redoing pair {present[-1]} and continuing.")
+            print(f"\nResuming from {raw_out_path}: {len(done_keys)} pairs already complete; "
+                  f"redoing pair_key={partial} and continuing.")
             f = raw_out_path.open("a", newline="", encoding="utf-8")
             writer = csv.DictWriter(f, fieldnames=raw_header)
         else:
-            resume = False
+            present = sorted(int(p) for p in existing.get("pair_id", pd.Series([], dtype=int)).dropna().unique())
+            if present:
+                # Legacy file without pair_key: position-based resume (only safe if this run's
+                # --max_pairs/--pair_quality/--context_condition and the pairs file are identical).
+                done_pair_ids = set(present[:-1])
+                existing[existing["pair_id"].isin(done_pair_ids)].reindex(columns=raw_header).to_csv(
+                    raw_out_path, index=False
+                )
+                print(f"\nWARNING: resuming a legacy raw without pair_key by POSITION "
+                      f"({len(done_pair_ids)} pairs); this is only correct if the pairs file and "
+                      f"--max_pairs/--pair_quality/--context_condition are unchanged. Use --overwrite "
+                      f"to start fresh.\nRedoing pair {present[-1]} and continuing.")
+                f = raw_out_path.open("a", newline="", encoding="utf-8")
+                writer = csv.DictWriter(f, fieldnames=raw_header)
+            else:
+                resume = False
     if not resume:
         f = raw_out_path.open("w", newline="", encoding="utf-8")
         writer = csv.DictWriter(f, fieldnames=raw_header)
@@ -846,7 +901,8 @@ def run_patching(
     try:
         for pair_id, row in tqdm(pairs.iterrows(), total=len(pairs), desc="Patching pairs"):
             pair_id = int(pair_id)
-            if pair_id in done_pair_ids:
+            pair_key = str(row["pair_key"])
+            if (pair_key in done_keys) if use_key_resume else (pair_id in done_pair_ids):
                 continue
             clean_prompt = str(row["clean_prompt"])
             corrupt_prompt = str(row["corrupt_prompt"])
@@ -900,6 +956,7 @@ def run_patching(
                         pair_rows.append(
                             {
                                 "pair_id": pair_id,
+                                "pair_key": pair_key,
                                 "clean_example_id": row["clean_example_id"],
                                 "corrupt_example_id": row["corrupt_example_id"],
                                 "question_index": row["question_index"],
