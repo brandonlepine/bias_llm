@@ -6,9 +6,13 @@
 #      until this re-runs. Output overwrites the WQ MLP attribution dir.
 #   2. WinoQueer steering sweeps with --save_vectors, one per construct-ALIGNED axis
 #      (sexual_orientation, gender_identity), persisting per-layer bias vectors (.pt).
-#   3. OOD steering transfer: inject each saved vector into the BBQ MCQ forward and
-#      measure Δbias. Matched (SO vec -> SO BBQ, gender_id vec -> Gender BBQ) AND
-#      cross-construct specificity (each vec -> the other axis's BBQ file).
+#   3. The SAME sweeps at --vector_position identity (identity-token span) -> a
+#      POSITION-MATCHED v_bias for residualize_vectors.py (the identity-span v_identity
+#      from build_identity_vectors.py subtracts cleanly only from an identity-span
+#      v_bias) AND an identity-token steering diagnostic in its own right.
+#   4. OOD steering transfer: inject each saved (readout) vector into the BBQ MCQ
+#      forward and measure Δbias. Matched (SO vec -> SO BBQ, gender_id vec -> Gender
+#      BBQ) AND cross-construct specificity (each vec -> the other axis's BBQ file).
 #
 # Run:  cd ~/bias_llm && git pull && nohup bash scripts/pod_steering_and_wqmlp.sh > steering_wqmlp.log 2>&1 &
 #       tail -f steering_wqmlp.log
@@ -41,10 +45,10 @@ python -u scripts/run_winoqueer_mlp_neuron_attribution.py \
   --verify_topk 96 --verify_pairs 150
 
 # ============================================================================
-# 2) Steering sweeps with --save_vectors (per aligned axis)
+# 2) Steering sweeps with --save_vectors (per aligned axis) — readout (decision token)
 # ============================================================================
 for AX in sexual_orientation gender_identity; do
-  echo "=== [2/3] Steering sweep: $AX ==="
+  echo "=== [2/4] Steering sweep (readout): $AX ==="
   python -u scripts/run_winoqueer_steering_sweep.py \
     --pairs_csv "$OUT/wq_${AX}.csv" --out_dir "$OUT/sweep_${AX}" \
     --save_vectors "$VEC/wq_${AX}.pt" \
@@ -53,7 +57,22 @@ for AX in sexual_orientation gender_identity; do
 done
 
 # ============================================================================
-# 3) OOD steering transfer onto BBQ MCQ — all layers, ambiguous context.
+# 3) SAME sweeps at the IDENTITY-TOKEN span -> position-matched v_bias for the
+#    residualization (subtracts cleanly from the identity-span v_identity), plus an
+#    identity-token steering diagnostic. Distinct out_dir/.pt so it never collides with
+#    the readout vectors used by the transfers below.
+# ============================================================================
+for AX in sexual_orientation gender_identity; do
+  echo "=== [3/4] Steering sweep (identity span): $AX ==="
+  python -u scripts/run_winoqueer_steering_sweep.py \
+    --pairs_csv "$OUT/wq_${AX}.csv" --out_dir "$OUT/sweep_${AX}_identitypos" \
+    --save_vectors "$VEC/wq_${AX}_identitypos.pt" \
+    --model_path "$M" --tl_model_name "$M" --device cuda --dtype float16 \
+    --max_pairs 600 --vector_position identity --n_random_seeds 5
+done
+
+# ============================================================================
+# 4) OOD steering transfer onto BBQ MCQ — all layers, ambiguous context.
 # Run table: vec_axis | bbq_file | subcategory | kind. The trans/binary split (via
 # stereotyped_groups) keeps the gender_identity-aligned trans cell separate from the
 # cis-binary role cell, so the matched test isn't diluted AND the binary cell is there
@@ -71,7 +90,7 @@ RUNS=(
 for R in "${RUNS[@]}"; do
   IFS='|' read -r VEC_AX BBQ_FILE SUB KIND <<< "$R"
   TAG="vec-${VEC_AX}__$(basename "$BBQ_FILE" .jsonl)-${SUB}"
-  echo "=== [3/3] Transfer ($KIND): $TAG ==="
+  echo "=== [4/4] Transfer ($KIND): $TAG ==="
   python -u scripts/run_bbq_steering_transfer.py \
     --vectors "$VEC/wq_${VEC_AX}.pt" --bbq_path "$BBQ_FILE" \
     --out_dir "$OUT/transfer_${TAG}" \
@@ -79,4 +98,4 @@ for R in "${RUNS[@]}"; do
     --context_condition ambig --subcategory "$SUB" --positions last --n_random_seeds 5
 done
 
-echo "=== DONE: wq_mlp_refix + steering vectors + 5 transfer runs ==="
+echo "=== DONE: wq_mlp_refix + steering vectors (readout + identity span) + 5 transfer runs ==="
