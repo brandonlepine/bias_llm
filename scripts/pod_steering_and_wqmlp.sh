@@ -53,22 +53,30 @@ for AX in sexual_orientation gender_identity; do
 done
 
 # ============================================================================
-# 3) OOD steering transfer onto BBQ MCQ (matched + cross-construct specificity)
+# 3) OOD steering transfer onto BBQ MCQ — all layers, ambiguous context.
+# Run table: vec_axis | bbq_file | subcategory | kind. The trans/binary split (via
+# stereotyped_groups) keeps the gender_identity-aligned trans cell separate from the
+# cis-binary role cell, so the matched test isn't diluted AND the binary cell is there
+# for the within-gender construct comparison.
 # ============================================================================
-declare -A BBQ=( [sexual_orientation]=data/bbq/data/Sexual_orientation.jsonl \
-                 [gender_identity]=data/bbq/data/Gender_identity.jsonl )
-
-for VEC_AX in sexual_orientation gender_identity; do
-  for BBQ_AX in sexual_orientation gender_identity; do
-    TAG="vec-${VEC_AX}__bbq-${BBQ_AX}"
-    [ "$VEC_AX" = "$BBQ_AX" ] && KIND=MATCHED || KIND=CROSS
-    echo "=== [3/3] Transfer ($KIND): $TAG ==="
-    python -u scripts/run_bbq_steering_transfer.py \
-      --vectors "$VEC/wq_${VEC_AX}.pt" --bbq_path "${BBQ[$BBQ_AX]}" \
-      --out_dir "$OUT/transfer_${TAG}" \
-      --model_path "$M" --tl_model_name "$M" --device cuda --dtype float16 \
-      --context_condition ambig --positions last --n_random_seeds 5
-  done
+SO=data/bbq/data/Sexual_orientation.jsonl
+GEN=data/bbq/data/Gender_identity.jsonl
+RUNS=(
+  "sexual_orientation|$SO|all|MATCHED"            # SO vector  -> SO QA
+  "gender_identity|$GEN|trans|MATCHED"            # trans vec  -> trans QA (the key causal test)
+  "gender_identity|$GEN|binary|WITHIN-GENDER"     # trans vec  -> cis-binary QA (the comparison)
+  "sexual_orientation|$GEN|trans|CROSS"           # SO vec     -> trans QA (specificity)
+  "gender_identity|$SO|all|CROSS"                 # trans vec  -> SO QA   (specificity)
+)
+for R in "${RUNS[@]}"; do
+  IFS='|' read -r VEC_AX BBQ_FILE SUB KIND <<< "$R"
+  TAG="vec-${VEC_AX}__$(basename "$BBQ_FILE" .jsonl)-${SUB}"
+  echo "=== [3/3] Transfer ($KIND): $TAG ==="
+  python -u scripts/run_bbq_steering_transfer.py \
+    --vectors "$VEC/wq_${VEC_AX}.pt" --bbq_path "$BBQ_FILE" \
+    --out_dir "$OUT/transfer_${TAG}" \
+    --model_path "$M" --tl_model_name "$M" --device cuda --dtype float16 \
+    --context_condition ambig --subcategory "$SUB" --positions last --n_random_seeds 5
 done
 
-echo "=== DONE: wq_mlp_refix + steering vectors + 4 transfer runs ==="
+echo "=== DONE: wq_mlp_refix + steering vectors + 5 transfer runs ==="

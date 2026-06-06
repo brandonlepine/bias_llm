@@ -48,6 +48,22 @@ from identify_biased_bbq_items import (  # noqa: E402
 from run_winoqueer_steering_sweep import random_matched  # noqa: E402
 
 
+def filter_subcategory(rows, sub):
+    """BBQ Gender_identity splits into trans vs cis-binary via `stereotyped_groups`, NOT the
+    `subcategory` field (which is adult/child). trans = any group token mentions trans/nonbinary
+    (864 items); binary = the F/M-only items (4808). 'all' = no filter. On non-gender files there
+    are no trans groups, so 'trans' yields 0 rows (guarded by the caller) and 'binary' is a no-op.
+    """
+    if sub == "all":
+        return rows
+
+    def is_trans(r):
+        groups = r.get("additional_metadata", {}).get("stereotyped_groups", [])
+        return any("trans" in str(g).lower() or "nonbinary" in str(g).lower() for g in groups)
+
+    return [r for r in rows if (is_trans(r) if sub == "trans" else not is_trans(r))]
+
+
 def load_model(model_path: str, tl_model_name: str, device: str, dtype: torch.dtype):
     """Load local HF weights wrapped in TransformerLens (same config as the BBQ scorer)."""
     tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
@@ -139,6 +155,9 @@ def main() -> None:
     ap.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
     ap.add_argument("--dtype", choices=["float16", "bfloat16", "float32"], default="float16")
     ap.add_argument("--context_condition", choices=["ambig", "disambig", "all"], default="ambig")
+    ap.add_argument("--subcategory", choices=["all", "trans", "binary"], default="all",
+                    help="Gender_identity subset via stereotyped_groups: trans (matched to the WQ "
+                         "gender_identity vector) vs binary (cis F/M roles). 'all' = no filter.")
     ap.add_argument("--max_examples", type=int, default=None)
     ap.add_argument("--batch_size", type=int, default=8)
     ap.add_argument("--layers", type=str, default=None, help="comma list; default = all saved layers")
@@ -168,9 +187,14 @@ def main() -> None:
     rows = load_jsonl(args.bbq_path)
     if args.context_condition != "all":
         rows = [r for r in rows if r.get("context_condition") == args.context_condition]
+    rows = filter_subcategory(rows, args.subcategory)
+    if not rows:
+        raise SystemExit(f"No BBQ rows after filtering (context={args.context_condition}, "
+                         f"subcategory={args.subcategory}) — wrong --subcategory for this file?")
     if args.max_examples is not None:
         rows = rows[:args.max_examples]
-    print(f"BBQ examples: {len(rows)} from {args.bbq_path} ({args.context_condition})")
+    print(f"BBQ examples: {len(rows)} from {args.bbq_path} "
+          f"({args.context_condition}, subcategory={args.subcategory})")
 
     model, tokenizer = load_model(args.model_path, args.tl_model_name, device, dtype)
 
@@ -205,8 +229,8 @@ def main() -> None:
     ax.axhline(base, color="#2c7fb8", ls=":", lw=1, label="unsteered baseline")
     ax.axvline(0, color="#ccc", lw=0.8)
     ax.set_xlabel("alpha (coefficient on WinoQueer v_L)"); ax.set_ylabel(metric)
-    ax.set_title(f"OOD steering transfer to BBQ QA — {args.bbq_path.stem}\n(does a WinoQueer bias "
-                 f"direction move BBQ answer bias?)")
+    ax.set_title(f"OOD steering transfer to BBQ QA — {args.bbq_path.stem} [{args.subcategory}]\n"
+                 f"(does a WinoQueer bias direction move BBQ answer bias?)")
     ax.legend(fontsize=7, ncol=2)
     curve_path = args.out_dir / "bbq_steering_transfer_curve.png"
     fig.tight_layout(); fig.savefig(curve_path, dpi=160, bbox_inches="tight"); plt.close(fig)
