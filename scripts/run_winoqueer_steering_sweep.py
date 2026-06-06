@@ -361,6 +361,9 @@ def main() -> None:
             # Persist the directions (+ provenance) so they can be injected into OTHER tasks. The
             # vector lives in resid_pre[L] space; applying it to BBQ's resid_pre[L] is the OOD test.
             args.save_vectors.parent.mkdir(parents=True, exist_ok=True)
+            # Identity-label column for provenance: WinoQueer uses Gender_ID_x, the combined
+            # BBQ/CrowS cohorts use Group_x. Fall back gracefully so non-WQ cohorts don't crash.
+            idcol = next((c for c in ("Gender_ID_x", "Group_x") if c in train_pairs.columns), None)
             torch.save({
                 "vectors": vectors,                       # [n_layers, d_model], float32
                 "norms": norms,                           # [n_layers]
@@ -368,7 +371,7 @@ def main() -> None:
                 "tl_model_name": args.tl_model_name,
                 "n_layers": n_layers,
                 "n_train_pairs": int(len(train_pairs)),
-                "train_identity_counts": train_pairs["Gender_ID_x"].value_counts().to_dict(),
+                "train_identity_counts": (train_pairs[idcol].value_counts().to_dict() if idcol else {}),
                 "pairs_csv": str(args.pairs_csv),
             }, args.save_vectors)
             print(f"Saved steering vectors -> {args.save_vectors}")
