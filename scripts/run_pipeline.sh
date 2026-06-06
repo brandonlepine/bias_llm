@@ -102,7 +102,11 @@ p_seg()      { local d=$1 c src=(); c=$(cohort_for "$d"); banner "$d : segmented
     --resid_raw "$ROOT/$d/resid/resid_pre_patching_raw.csv" \
     --cohort "$c" --out_dir "$ROOT/$d/seg_resid" --label "$d" "${src[@]}"; }
 
-battery() { local d=$1; p_resid "$d"; p_head "$d"; p_ablation "$d"; p_greedy "$d"; p_mlp "$d"; p_steering "$d"; }
+# A battery ALWAYS ends with the segmented analysis — the per-axis / per-identity (and, for the
+# combined cohort, per-source) disentangling. The raw probes keep every pair (joined on row_id), so
+# seg is what turns them into the by-group profiles we actually compare; pooling all identities into
+# one undifferentiated run would defeat the comparison, so it is never the default.
+battery() { local d=$1; p_resid "$d"; p_head "$d"; p_ablation "$d"; p_greedy "$d"; p_mlp "$d"; p_steering "$d"; p_seg "$d"; }
 
 # ---------------------------------------------------------------------------- cross / OOD steps
 s_identity() { banner "identity-only vectors (v_identity, all axes)"
@@ -172,9 +176,11 @@ run_one() {
     residualize) s_residualize;;
     compare)     s_compare;;
     all)
+      # battery (incl. seg) on WinoQueer + the combined BBQ+CrowS cohort. The combined cohort keeps
+      # its `source` column, so combined's seg splits by axis AND by source (bbq vs crows) — no need
+      # to re-run the battery on the bbq/crows cohorts separately (they're available as datasets if
+      # you want a fully isolated by-source battery: `... bbq crows`).
       battery wq; battery combined
-      p_resid bbq; p_resid crows               # by-source resid (combined is pooled bbq+crows)
-      p_seg wq; p_seg combined
       s_identity; s_transfer; s_residualize; s_compare;;
     *) echo "unknown step: $s (try: list)" >&2; exit 1;;
   esac
@@ -186,12 +192,13 @@ Unified mech-interp pipeline runner (model: $MODEL  tag: $TAG  out: $ROOT)
 
   bash scripts/run_pipeline.sh [--model ID --tl ID --tag T --device cuda --dtype float16] STEP...
 
-DATASET BATTERIES (resid head ablation greedy mlp steering):  wq  combined  bbq  crows
+DATASET BATTERIES (resid head ablation greedy mlp steering + seg):  wq  combined  bbq  crows
+  every battery ENDS with segmented (by-axis/identity; combined also by-source) analysis by default
 SINGLE PROBE:                                                  <dataset>:<probe>   e.g. wq:mlp
   probes: resid head ablation greedy mlp steering seg
 CROSS / OOD STEPS:   identity  transfer  residualize  compare
-ALL:                 all   (= battery wq+combined, by-source resid bbq+crows, seg wq+combined,
-                            identity, transfer, residualize, compare)
+ALL:                 all   (= battery wq + battery combined [each incl. seg] + identity + transfer
+                            + residualize + compare; combined's seg disentangles bbq vs crows)
 
 Outputs -> pod_results/<tag>/...   (per-model namespaced; cohorts held fixed across models)
 EOF
