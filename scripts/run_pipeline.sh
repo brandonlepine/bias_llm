@@ -47,6 +47,11 @@ TL_MODEL="${TL_MODEL:-$MODEL}"
 ROOT="pod_results/$TAG"
 COMMON=(--model_path "$MODEL" --tl_model_name "$TL_MODEL" --device "$DEVICE" --dtype "$DTYPE")
 
+# Batch sizes for the patching probes. Default 32 (unchanged from the original launchers); raise via
+# env on a GPU with VRAM headroom to speed things up, e.g. PATCH_BATCH=128 HEAD_BATCH=128 bash ...
+PATCH_BATCH="${PATCH_BATCH:-32}"   # resid patching
+HEAD_BATCH="${HEAD_BATCH:-32}"     # head patching + ablation
+
 cohort_for() {
   case "$1" in
     wq)       echo data/winoqueer/results/segmented/cohort.csv;;
@@ -63,15 +68,15 @@ banner() { echo; echo "=========================================================
 # ---------------------------------------------------------------------------- GPU probes
 p_resid()    { local d=$1 c; c=$(cohort_for "$d"); banner "$d : resid patching"
   python -u scripts/run_winoqueer_resid_patching.py --pairs_csv "$c" \
-    --out_dir "$ROOT/$d/resid" --no_resort "${COMMON[@]}"; }
+    --out_dir "$ROOT/$d/resid" --patch_batch_size "$PATCH_BATCH" --no_resort "${COMMON[@]}"; }
 
 p_head()     { local d=$1 c; c=$(cohort_for "$d"); banner "$d : head patching"
   python -u scripts/run_winoqueer_head_patching.py --pairs_csv "$c" \
-    --out_dir "$ROOT/$d/head" --no_resort "${COMMON[@]}"; }
+    --out_dir "$ROOT/$d/head" --head_batch_size "$HEAD_BATCH" --no_resort "${COMMON[@]}"; }
 
 p_ablation() { local d=$1 c; c=$(cohort_for "$d"); banner "$d : head ablation"
   python -u scripts/run_winoqueer_head_ablation.py --pairs_csv "$c" \
-    --out_dir "$ROOT/$d/ablation" --no_resort "${COMMON[@]}"; }
+    --out_dir "$ROOT/$d/ablation" --head_batch_size "$HEAD_BATCH" --no_resort "${COMMON[@]}"; }
 
 p_greedy()   { local d=$1 c A; c=$(cohort_for "$d"); A="$ROOT/$d/ablation"; banner "$d : greedy knockout"
   if [[ ! -f "$A/head_ablation_ranking.csv" ]]; then
