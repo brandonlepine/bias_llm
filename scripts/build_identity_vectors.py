@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
@@ -41,18 +42,21 @@ from identify_biased_bbq_items import resolve_device  # noqa: E402
 from run_bbq_steering_transfer import load_model       # noqa: E402
 from transformer_lens import utils as tl_utils         # noqa: E402
 
-# Axis -> (target labels, reference labels). canonical_label values from mi_identity_prompts.csv.
-# SO target = the WinoQueer identity set (gay/lesbian/bi/pan/ace) vs the cis-het reference; gender
-# target = trans/NB vs cis. Kept matched to v_bias's axes so the subtraction is apples-to-apples.
-DEFAULT_CONTRASTS = {
-    "sexual_orientation": (
-        ["gay", "lesbian", "bisexual", "pansexual", "asexual"],
-        ["straight", "heterosexual"],
-    ),
-    "gender_identity": (
-        ["transgender", "transgender man", "transgender woman", "nonbinary"],
-        ["cisgender", "cisgender man", "cisgender woman"],
-    ),
+# Per-axis REFERENCE (neutral / non-stereotyped) group, in identity-dataset canonical labels. The
+# axis-level v_identity = mean(all other axis identities) - mean(reference); per-identity v_identity =
+# that identity - mean(reference). Chosen to approximate the combined cohort's contrast group so the
+# residual v_bias - v_identity is apples-to-apples. NOTE this is an approximation — the cohort's
+# per-pair reference (Group_y) varies (esp. binary gender man<->woman); we use --mode project
+# downstream, which removes the identity COMPONENT and is robust to reference/scale mismatch.
+AXIS_REFERENCE = {
+    "sexual_orientation": ["straight", "heterosexual"],
+    "gender_identity": ["cisgender", "cisgender man", "cisgender woman"],
+    "race_ethnicity": ["White", "Caucasian"],
+    "religion": ["Christian"],
+    "disability_status": ["nondisabled", "able-bodied"],
+    "nationality": ["American"],
+    "physical_appearance": ["average height", "average-weight"],
+    "socioeconomic_status": ["middle class"],
 }
 VARIANTS = ("identity", "last", "mean")
 
@@ -236,18 +240,26 @@ def main() -> None:
                 "identity_csv": str(args.identity_csv)}, cpath)
     print(f"\nSaved per-identity centroids ({len(counts)} identities) -> {cpath}")
 
-    # Contrast vectors.
+    # Contrast vectors. Targets = every axis identity present in the centroids EXCEPT the references.
+    lab2axis = dict(zip(df["canonical_label"], df["axis"]))
+    labels_by_axis = defaultdict(list)
+    for lab in centroids:
+        labels_by_axis[lab2axis.get(lab)].append(lab)
     if args.target or args.reference:
         if len(axes) != 1:
             raise SystemExit("--target/--reference override requires exactly one --axes")
         contrasts = {axes[0]: ([t.strip() for t in args.target.split(",")],
                                [r.strip() for r in args.reference.split(",")])}
     else:
-        contrasts = {a: DEFAULT_CONTRASTS[a] for a in axes if a in DEFAULT_CONTRASTS}
-        skipped = [a for a in axes if a not in DEFAULT_CONTRASTS]
-        if skipped:
-            print(f"No default contrast for {skipped} — centroids saved; pass --target/--reference "
-                  f"to build a vector for one of these.")
+        contrasts = {}
+        for a in axes:
+            refs = [r for r in AXIS_REFERENCE.get(a, []) if r in centroids]
+            tgts = [l for l in labels_by_axis.get(a, []) if l not in refs]
+            if refs and tgts:
+                contrasts[a] = (tgts, refs)
+            else:
+                print(f"axis {a}: no reference resolved (refs={refs}) — centroids saved, "
+                      f"no contrast vector. Pass --target/--reference to force one.")
 
     print("\nContrast vectors (v_identity):")
     for axis, (tgt, ref) in contrasts.items():

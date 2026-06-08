@@ -40,6 +40,15 @@ WQ_AXES = {"sexual_orientation", "gender_identity"}
 # cross-vocabulary synonyms we DO trust (normalized form -> normalized form)
 CURATED = {"nb": "nonbinary"}            # WinoQueer 'NB' == identity 'nonbinary'
 
+# Human-confirmed overrides (2026-06-08): canonical_label -> combined `block` it maps to. The first
+# two are surface-spelling variants of the same identity; the last three are near-synonyms the
+# identity dataset lists separately but the combined cohort doesn't distinguish (accepted: recovers
+# data, the shared v_bias is harmless for the appraisal). References/opposites were rejected.
+MANUAL_COMBINED = {
+    "mental illness": "mentally ill", "poorly dressed": "badly dressed",
+    "African American": "Black", "Caucasian": "White", "homosexual": "gay",
+}
+
 
 def norm(s: str) -> str:
     s = str(s).strip().lower()
@@ -88,6 +97,9 @@ def main() -> None:
         cax = AXIS_TO_COMBINED.get(axis, "")
         blocks = comb_blocks.get(cax, {})
         comb_hit = next((blocks[k] for k in keys if k in blocks), "")
+        manual = ""
+        if not comb_hit and lab in MANUAL_COMBINED and norm(MANUAL_COMBINED[lab]) in blocks:
+            comb_hit = blocks[norm(MANUAL_COMBINED[lab])]; manual = comb_hit
 
         src = ("both" if wq_hit and comb_hit else "winoqueer" if wq_hit
                else "combined" if comb_hit else "none")
@@ -100,7 +112,8 @@ def main() -> None:
                 status = "ambiguous"
         row = {"identity_id": it["identity_id"], "canonical_label": lab, "axis": axis,
                "wq_identity": wq_hit, "combined_axis": cax, "combined_block": comb_hit,
-               "v_bias_source": src, "status": status, "candidates_for_review": cands}
+               "v_bias_source": src, "status": status, "manual_override": manual,
+               "candidates_for_review": cands}
         rows.append(row)
         (ambiguous if status == "ambiguous" else unmatched if status == "unmatched" else rows and None)
         if status == "ambiguous":

@@ -191,36 +191,46 @@ s_decompose() { banner "decomposition appraisal (axis-level): v_identity / v_bia
   done
   python -u scripts/plot_steering_transfer.py --dirs "$ROOT"/decompose/* --out_dir "$ROOT/decompose/_viz" || true; }
 
-# Per-identity matched directions (Phase 2): (axis | identity-dataset label | WinoQueer cohort label).
-# Only identities present in BOTH the identity dataset and the WinoQueer cohort (so v_bias exists).
-PER_ID_TABLE=(
-  "sexual_orientation|gay|Gay"       "sexual_orientation|lesbian|Lesbian"
-  "sexual_orientation|bisexual|Bisexual" "sexual_orientation|pansexual|Pansexual"
-  "sexual_orientation|asexual|Asexual"
-  "gender_identity|transgender|Transgender" "gender_identity|nonbinary|NB"
-)
-s_per_identity() { banner "per-identity vectors + matched appraisal (Phase 2)"
-  # For each identity: mint v_bias from its WinoQueer pairs (identity-span, vectors_only = cheap),
-  # residualize against its per-identity v_identity -> v_stereotype, then apply all three back to
-  # that SAME identity's continuation pairs (matched, not blind). Needs identity --per_identity.
-  local WQ; WQ=$(cohort_for wq); local PV="$ROOT/per_identity/vectors"; mkdir -p "$PV"
-  for R in "${PER_ID_TABLE[@]}"; do IFS='|' read -r AX IDL WQL <<< "$R"
-    local VID="$ROOT/identity/v_identity_${AX}__${IDL}.pt"
-    if [[ ! -f "$VID" ]]; then echo "SKIP per_identity[$AX/$IDL]: missing $VID (run identity)" >&2; continue; fi
-    local VB="$PV/vbias_${AX}__${IDL}.pt" VS="$PV/vstereo_${AX}__${IDL}.pt"
-    echo "--- $AX/$IDL: mint v_bias from WinoQueer '$WQL' (identity-span) ---"
-    python -u scripts/run_winoqueer_steering_sweep.py --pairs_csv "$WQ" --identity "$WQL" \
+s_per_identity() { banner "per-identity vectors + matched appraisal (crosswalk-driven)"
+  # Driven by data/identity_crosswalk.csv: for EVERY identity with a per-identity v_bias source
+  # (WinoQueer for LGBTQ, the combined BBQ+CrowS cohort `block` for the rest), mint that identity's
+  # v_bias from its OWN pairs (identity-span, vectors_only = cheap), residualize against its
+  # per-identity v_identity -> v_stereotype, then apply all three back to that SAME identity's pairs
+  # (matched via --identity/--identity_col; combined also filtered by --axis). Recovers ~38 identities
+  # (vs 7). Needs `identity` (--per_identity emits the v_identity files). Bounded by DECOMP_*.
+  local WQ COMB XW=data/identity_crosswalk.csv; WQ=$(cohort_for wq); COMB=$(cohort_for combined)
+  local PV="$ROOT/per_identity/vectors"; mkdir -p "$PV"
+  [[ -f "$XW" ]] || { echo "missing $XW — run: python scripts/build_identity_crosswalk.py" >&2; return 1; }
+  while IFS='|' read -r AX SAFE CANON COH IDLAB CAX; do
+    [[ -z "$AX" ]] && continue
+    local VID="$ROOT/identity/v_identity_${AX}__${SAFE}.pt"
+    if [[ ! -f "$VID" ]]; then echo "SKIP $AX/$CANON: missing $VID (run identity)" >&2; continue; fi
+    local C AXF=()
+    if [[ "$COH" == wq ]]; then C="$WQ"; else C="$COMB"; AXF=(--axis "$CAX" --identity_col block); fi
+    local VB="$PV/vbias_${COH}__${AX}__${SAFE}.pt" VS="$PV/vstereo_${COH}__${AX}__${SAFE}.pt"
+    echo "--- $AX/$CANON: mint v_bias from $COH '$IDLAB' (identity-span) ---"
+    python -u scripts/run_winoqueer_steering_sweep.py --pairs_csv "$C" --identity "$IDLAB" "${AXF[@]}" \
       --vector_position identity --vectors_only --save_vectors "$VB" --max_pairs 100000 "${COMMON[@]}"
-    echo "--- $AX/$IDL: residualize -> v_stereotype ---"
     python scripts/residualize_vectors.py --bias "$VB" --identity "$VID" --out "$VS" \
       --mode project --identity_variant identity
     for PAIR in "identity:$VID" "bias:$VB" "stereotype:$VS"; do
-      python -u scripts/run_winoqueer_steering_sweep.py --pairs_csv "$WQ" --identity "$WQL" \
-        --load_vectors "${PAIR##*:}" --out_dir "$ROOT/per_identity/wq__${AX}__${IDL}__${PAIR%%:*}" \
+      python -u scripts/run_winoqueer_steering_sweep.py --pairs_csv "$C" --identity "$IDLAB" "${AXF[@]}" \
+        --load_vectors "${PAIR##*:}" --out_dir "$ROOT/per_identity/${COH}__${AX}__${SAFE}__${PAIR%%:*}" \
         --layers "$DECOMP_LAYERS" --max_pairs "$DECOMP_MAXPAIRS" "${COMMON[@]}"
     done
-  done
-  python -u scripts/plot_steering_transfer.py --dirs "$ROOT"/per_identity/wq__* --out_dir "$ROOT/per_identity/_viz" || true; }
+  done < <(python - "$XW" <<'PY'
+import sys, csv
+for r in csv.DictReader(open(sys.argv[1])):
+    if r["v_bias_source"] not in ("both", "winoqueer", "combined"):
+        continue
+    safe = r["canonical_label"].replace(" ", "_").replace("/", "-")
+    if r["wq_identity"]:                    # prefer WinoQueer (cleaner) when available
+        print("|".join([r["axis"], safe, r["canonical_label"], "wq", r["wq_identity"], ""]))
+    else:
+        print("|".join([r["axis"], safe, r["canonical_label"], "combined", r["combined_block"], r["combined_axis"]]))
+PY
+)
+  python -u scripts/plot_steering_transfer.py --dirs "$ROOT"/per_identity/*__*__*__* --out_dir "$ROOT/per_identity/_viz" || true; }
 
 s_compare() { banner "cross-dataset comparison (wq vs combined, CPU)"
   mkdir -p "$ROOT/compare"

@@ -336,7 +336,10 @@ def main() -> None:
                     help="filter the cohort to one axis (e.g. sexual_orientation) so the vector is "
                          "applied only to matching pairs, not blindly across axes.")
     ap.add_argument("--identity", type=str, default=None,
-                    help="comma list of identities (the cohort `identity` column) to filter to.")
+                    help="comma list of identities to filter to (matched application).")
+    ap.add_argument("--identity_col", type=str, default=None,
+                    help="column the --identity filter keys on; default auto: `identity` (WinoQueer) "
+                         "else `block` (combined BBQ+CrowS cohort).")
     ap.add_argument("--vectors_only", action="store_true",
                     help="build + --save_vectors from all matched pairs, then exit (skip the alpha "
                          "sweep). Cheap way to mint per-identity v_bias.")
@@ -361,9 +364,12 @@ def main() -> None:
         # don't blindly steer unrelated pairs (e.g. a sexual_orientation vector on race pairs).
         if args.axis is not None and "axis" in pairs.columns:
             pairs = pairs[pairs["axis"].astype(str) == args.axis]
-        if args.identity is not None and "identity" in pairs.columns:
+        if args.identity is not None:
+            idcol = args.identity_col or ("identity" if "identity" in pairs.columns else "block")
+            if idcol not in pairs.columns:
+                raise SystemExit(f"--identity given but column {idcol!r} not in cohort {list(pairs.columns)}")
             keep = {s.strip() for s in args.identity.split(",")}
-            pairs = pairs[pairs["identity"].astype(str).isin(keep)]
+            pairs = pairs[pairs[idcol].astype(str).isin(keep)]
         if args.max_per_predicate is not None and "predicate" in pairs.columns:
             pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
         pairs = pairs.head(args.max_pairs).reset_index(drop=True)
