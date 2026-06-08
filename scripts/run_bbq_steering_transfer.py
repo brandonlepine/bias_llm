@@ -216,24 +216,13 @@ def main() -> None:
     raw_path = args.out_dir / "bbq_steering_transfer_raw.csv"
     raw.to_csv(raw_path, index=False)
 
-    # bias-vs-alpha curves (real vs random, median over seeds), one line per layer
     metric = "mean_p_biased"
     base = float(raw[(raw.kind == "real") & (raw.alpha == 0.0)][metric].mean())
-    fig, ax = plt.subplots(figsize=(9, 6))
-    for L in layers:
-        r = raw[(raw.kind == "real") & (raw.layer == L)].groupby("alpha")[metric].mean()
-        ax.plot(r.index, r.values, "-o", ms=3, lw=1.4, label=f"L{L}")
-    if rand_list:
-        rnd = raw[raw.kind == "random"].groupby("alpha")[metric].median()
-        ax.plot(rnd.index, rnd.values, "--", color="#888", lw=2, label="random (median)")
-    ax.axhline(base, color="#2c7fb8", ls=":", lw=1, label="unsteered baseline")
-    ax.axvline(0, color="#ccc", lw=0.8)
-    ax.set_xlabel("alpha (coefficient on WinoQueer v_L)"); ax.set_ylabel(metric)
-    ax.set_title(f"OOD steering transfer to BBQ QA — {args.bbq_path.stem} [{args.subcategory}]\n"
-                 f"(does a WinoQueer bias direction move BBQ answer bias?)")
-    ax.legend(fontsize=7, ncol=2)
-    curve_path = args.out_dir / "bbq_steering_transfer_curve.png"
-    fig.tight_layout(); fig.savefig(curve_path, dpi=160, bbox_inches="tight"); plt.close(fig)
+    # Readable plots: a layer x alpha Δ-heatmap + a top-K-layer curve over the random control band
+    # (one line per layer is unreadable at 32 layers). plot_steering_transfer regenerates these from
+    # the raw too, and builds the cross-condition comparison.
+    from plot_steering_transfer import per_condition_figures  # noqa: E402
+    per_condition_figures(args.out_dir, metric, top_k=4)
 
     # best transfer: largest bias increase at alpha>0 and decrease at alpha<0, real direction
     real = raw[raw.kind == "real"]
@@ -245,7 +234,7 @@ def main() -> None:
             r = row.iloc[0]
             print(f"  {tag}: L{int(r.layer)} alpha={r.alpha:g} -> {metric}={r[metric]:.4f} "
                   f"(delta {r[metric]-base:+.4f}), biased_pred_rate={r.biased_prediction_rate:.3f}")
-    print(f"\nWrote:\n  {raw_path}\n  {curve_path}")
+    print(f"\nWrote:\n  {raw_path}\n  {args.out_dir}/transfer_heatmap.png\n  {args.out_dir}/transfer_best_layers.png")
     print(f"runtime_seconds: {time.perf_counter() - started:.2f}")
 
 

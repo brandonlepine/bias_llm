@@ -144,7 +144,9 @@ PY
     python -u scripts/run_bbq_steering_transfer.py --vectors "$V/wq_${va}.pt" --bbq_path "$bf" \
       --out_dir "$T/transfer_vec-${va}__$(basename "$bf" .jsonl)-${sub}" \
       --context_condition ambig --subcategory "$sub" --positions last --n_random_seeds 5 "${COMMON[@]}"
-  done; }
+  done
+  # cross-condition comparison figures (matched vs cross-construct, shared color scale)
+  python -u scripts/plot_steering_transfer.py --dirs "$T"/transfer_* --out_dir "$T/_viz"; }
 
 s_residualize() { banner "residualize: v_stereotype = v_bias - v_identity (CPU)"
   for AX in sexual_orientation gender_identity; do
