@@ -328,6 +328,15 @@ def main() -> None:
     ap.add_argument("--save_vectors", type=Path, default=None,
                     help="persist the learned per-layer difference-of-means vectors (.pt) so they "
                          "can be applied OOD (e.g. to the BBQ QA task by run_bbq_steering_transfer.py)")
+    ap.add_argument("--load_vectors", type=Path, default=None,
+                    help="evaluate an EXTERNAL saved vector (.pt) instead of building one from the "
+                         "cohort — applies v_identity / v_stereotype / a foreign v_bias to this "
+                         "continuation task. Skips the train split (evaluates on all matched pairs).")
+    ap.add_argument("--axis", type=str, default=None,
+                    help="filter the cohort to one axis (e.g. sexual_orientation) so the vector is "
+                         "applied only to matching pairs, not blindly across axes.")
+    ap.add_argument("--identity", type=str, default=None,
+                    help="comma list of identities (the cohort `identity` column) to filter to.")
     ap.add_argument("--plot_only", action="store_true")
     args = ap.parse_args()
 
@@ -345,19 +354,39 @@ def main() -> None:
         kinds = ["real"] if args.no_random else ["real", "random"]
 
         pairs = pd.read_csv(args.pairs_csv).sort_values("bias_score", ascending=False)
+        # Identity-MATCHED application: restrict to the axis/identity the vector is meant for so we
+        # don't blindly steer unrelated pairs (e.g. a sexual_orientation vector on race pairs).
+        if args.axis is not None and "axis" in pairs.columns:
+            pairs = pairs[pairs["axis"].astype(str) == args.axis]
+        if args.identity is not None and "identity" in pairs.columns:
+            keep = {s.strip() for s in args.identity.split(",")}
+            pairs = pairs[pairs["identity"].astype(str).isin(keep)]
         if args.max_per_predicate is not None and "predicate" in pairs.columns:
             pairs = pairs.groupby("predicate", sort=False, group_keys=False).head(args.max_per_predicate).sort_values("bias_score", ascending=False)
         pairs = pairs.head(args.max_pairs).reset_index(drop=True)
-        train_pairs, test_pairs = stratified_split(pairs, args.train_frac)
-        print(f"Pairs: {len(pairs)} -> train {len(train_pairs)} / test {len(test_pairs)} | "
-              f"alphas={alphas} | eval_sets={eval_sets} | kinds={kinds} | vector_position={args.vector_position}")
+        if len(pairs) == 0:
+            raise SystemExit(f"No pairs after filtering (axis={args.axis}, identity={args.identity}).")
 
         model, tokenizer, device = load_model(args)
         n_layers = int(model.cfg.n_layers)
         layers = [int(x) for x in args.layers.split(",")] if args.layers else list(range(n_layers))
 
-        vectors, norms = build_vectors(model, tokenizer, device, train_pairs, args.vector_position, n_layers)
-        if args.save_vectors:
+        if args.load_vectors is not None:
+            # Evaluate an external vector: no train split, no build, no save — score every matched pair.
+            blob = torch.load(args.load_vectors, map_location="cpu")
+            vectors, norms = blob["vectors"].float(), blob["norms"].float()
+            if vectors.shape[0] != n_layers:
+                raise SystemExit(f"vector n_layers {vectors.shape[0]} != model n_layers {n_layers}")
+            train_pairs, test_pairs = pairs.iloc[0:0], pairs
+            print(f"LOADED vector {args.load_vectors} (pos={blob.get('vector_position')}, "
+                  f"axis={blob.get('axis')}) | eval pairs={len(test_pairs)} (axis={args.axis}) | "
+                  f"alphas={alphas} | eval_sets={eval_sets} | kinds={kinds}")
+        else:
+            train_pairs, test_pairs = stratified_split(pairs, args.train_frac)
+            print(f"Pairs: {len(pairs)} -> train {len(train_pairs)} / test {len(test_pairs)} | "
+                  f"alphas={alphas} | eval_sets={eval_sets} | kinds={kinds} | vector_position={args.vector_position}")
+            vectors, norms = build_vectors(model, tokenizer, device, train_pairs, args.vector_position, n_layers)
+        if args.save_vectors and args.load_vectors is None:
             # Persist the directions (+ provenance) so they can be injected into OTHER tasks. The
             # vector lives in resid_pre[L] space; applying it to BBQ's resid_pre[L] is the OOD test.
             args.save_vectors.parent.mkdir(parents=True, exist_ok=True)
