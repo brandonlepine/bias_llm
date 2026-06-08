@@ -52,6 +52,10 @@ COMMON=(--model_path "$MODEL" --tl_model_name "$TL_MODEL" --device "$DEVICE" --d
 PATCH_BATCH="${PATCH_BATCH:-32}"   # resid patching
 HEAD_BATCH="${HEAD_BATCH:-32}"     # head patching + ablation
 
+# decompose step: bounded by default (it's 12 sweeps); widen via env on a fast GPU.
+DECOMP_LAYERS="${DECOMP_LAYERS:-8,10,12,13,14,15,16,18}"   # focus on the steering-active band
+DECOMP_MAXPAIRS="${DECOMP_MAXPAIRS:-300}"
+
 cohort_for() {
   case "$1" in
     wq)       echo data/winoqueer/results/segmented/cohort.csv;;
@@ -157,6 +161,36 @@ s_residualize() { banner "residualize: v_stereotype = v_bias - v_identity (CPU)"
       --out "$ROOT/identity/v_stereotype_${AX}.pt" --mode project --identity_variant identity
   done; }
 
+s_decompose() { banner "decomposition appraisal (axis-level): v_identity / v_bias / v_stereotype"
+  # For each aligned axis, apply each of the 3 directions to BOTH the WinoQueer CONTINUATION task
+  # (--load_vectors, axis-matched) and the BBQ QA task, sweeping alpha. Answers: does v_identity move
+  # bias? does v_bias? does removing identity (v_stereotype) preserve/destroy steering? Vectors are
+  # the IDENTITY-SPAN variants so v_bias and v_identity are position-matched for the subtraction.
+  # Needs: identity + transfer + residualize to have run. (Phase 1 = SO + gender_identity; the
+  # combined-cohort axes need label reconciliation first.)
+  local WQ; WQ=$(cohort_for wq)
+  local -A BBQ=( [sexual_orientation]=data/bbq/data/Sexual_orientation.jsonl \
+                 [gender_identity]=data/bbq/data/Gender_identity.jsonl )
+  local -A SUB=( [sexual_orientation]=all [gender_identity]=trans )
+  for AX in sexual_orientation gender_identity; do
+    local -A VEC=( [identity]="$ROOT/identity/v_identity_${AX}.pt" \
+                   [bias]="$ROOT/transfer/vectors/wq_${AX}_identitypos.pt" \
+                   [stereotype]="$ROOT/identity/v_stereotype_${AX}.pt" )
+    for L in identity bias stereotype; do
+      local V="${VEC[$L]}"
+      if [[ ! -f "$V" ]]; then echo "SKIP decompose[$AX/$L]: missing $V (run identity+transfer+residualize)" >&2; continue; fi
+      echo "--- $AX / $L -> WinoQueer continuation ---"
+      python -u scripts/run_winoqueer_steering_sweep.py --pairs_csv "$WQ" --axis "$AX" \
+        --load_vectors "$V" --out_dir "$ROOT/decompose/wq__${AX}__${L}" \
+        --layers "$DECOMP_LAYERS" --max_pairs "$DECOMP_MAXPAIRS" "${COMMON[@]}"
+      echo "--- $AX / $L -> BBQ QA ---"
+      python -u scripts/run_bbq_steering_transfer.py --vectors "$V" --bbq_path "${BBQ[$AX]}" \
+        --subcategory "${SUB[$AX]}" --layers "$DECOMP_LAYERS" --context_condition ambig --positions last \
+        --out_dir "$ROOT/decompose/bbq__${AX}__${L}" "${COMMON[@]}"
+    done
+  done
+  python -u scripts/plot_steering_transfer.py --dirs "$ROOT"/decompose/* --out_dir "$ROOT/decompose/_viz" || true; }
+
 s_compare() { banner "cross-dataset comparison (wq vs combined, CPU)"
   mkdir -p "$ROOT/compare"
   python -u scripts/compare_segmented_runs.py --out_dir "$ROOT/compare/head" \
@@ -181,6 +215,7 @@ run_one() {
     identity)    s_identity;;
     transfer)    s_transfer;;
     residualize) s_residualize;;
+    decompose)   s_decompose;;
     compare)     s_compare;;
     all)
       # battery (incl. seg) on WinoQueer + the combined BBQ+CrowS cohort. The combined cohort keeps
@@ -203,7 +238,9 @@ DATASET BATTERIES (resid head ablation greedy mlp steering + seg):  wq  combined
   every battery ENDS with segmented (by-axis/identity; combined also by-source) analysis by default
 SINGLE PROBE:                                                  <dataset>:<probe>   e.g. wq:mlp
   probes: resid head ablation greedy mlp steering seg
-CROSS / OOD STEPS:   identity  transfer  residualize  compare
+CROSS / OOD STEPS:   identity  transfer  residualize  decompose  compare
+  decompose = apply v_identity / v_bias / v_stereotype to WinoQueer continuation + BBQ QA, axis-matched
+              (needs identity+transfer+residualize; bounded by DECOMP_LAYERS / DECOMP_MAXPAIRS env)
 ALL:                 all   (= battery wq + battery combined [each incl. seg] + identity + transfer
                             + residualize + compare; combined's seg disentangles bbq vs crows)
 
