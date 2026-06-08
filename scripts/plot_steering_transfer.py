@@ -60,8 +60,10 @@ def load(d: Path, metric: str):
     return delta, baseline, rnd, layers, alphas, metric
 
 
-def heatmap(ax, delta, layers, alphas, vmax, title):
-    im = ax.imshow(delta.values, aspect="auto", cmap="RdBu_r", vmin=-vmax, vmax=vmax,
+def heatmap(ax, delta, layers, alphas, vmax, title, vmin=None, cmap="RdBu_r"):
+    if vmin is None:
+        vmin = -vmax
+    im = ax.imshow(delta.values, aspect="auto", cmap=cmap, vmin=vmin, vmax=vmax,
                    origin="upper", interpolation="nearest",
                    extent=[-0.5, len(alphas) - 0.5, len(layers) - 0.5, -0.5])
     ax.set_xticks(range(len(alphas))); ax.set_xticklabels([f"{a:g}" for a in alphas], fontsize=7)
@@ -107,6 +109,53 @@ def per_condition_figures(d: Path, metric: str, top_k: int):
     return label, delta, baseline, rnd, layers, alphas
 
 
+def per_sweep_figures(d: Path, top_k: int):
+    """In-domain WinoQueer steering sweep (steering_sweep_raw.csv): per eval_set, a layer×alpha
+    median-bias_fraction heatmap + a top-K-layer curve over the random control band. control =
+    induce toward 1 (biased); queer = de-bias toward 0 (unbiased). bias_fraction has natural 0/1
+    anchors, so the heatmap shows it directly (not Δ)."""
+    raw = pd.read_csv(d / "steering_sweep_raw.csv")
+    alphas = sorted(raw.alpha.unique()); layers = sorted(raw.layer.unique())
+    label = d.name.replace("sweep_", "").replace("_", " ")
+    done = []
+    for es, goal in [("control", "induce → 1 (biased)"), ("queer", "de-bias → 0 (unbiased)")]:
+        sub = raw[raw.eval_set == es]
+        real = sub[sub.kind == "real"]
+        if real.empty:
+            continue
+        grid = real.pivot_table(index="layer", columns="alpha", values="bias_fraction",
+                                aggfunc="median").reindex(index=layers, columns=alphas)
+        base = float(real[real.alpha == 0.0]["bias_fraction"].median())
+
+        fig, ax = plt.subplots(figsize=(5.2, 6))
+        im = heatmap(ax, grid, layers, alphas, 1.0,
+                     f"WinoQueer steering sweep  {label} [{es}]\nmedian bias_fraction ({goal}); "
+                     f"baseline≈{base:.2f}", vmin=0.0, cmap="RdBu_r")
+        cb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04); cb.ax.tick_params(labelsize=7)
+        cb.set_label("bias_fraction (1=biased, 0=unbiased)", fontsize=8)
+        fig.tight_layout(); fig.savefig(d / f"sweep_heatmap_{es}.png", dpi=160, bbox_inches="tight"); plt.close(fig)
+
+        top = list((grid - base).abs().max(axis=1).sort_values(ascending=False).head(top_k).index)
+        fig, ax = plt.subplots(figsize=(7.5, 5))
+        rnd = sub[sub.kind == "random"]
+        if not rnd.empty:
+            rg = rnd.groupby("alpha")["bias_fraction"].agg(
+                ["median", lambda s: s.quantile(0.25), lambda s: s.quantile(0.75)])
+            rg.columns = ["med", "q25", "q75"]
+            ax.fill_between(rg.index, rg.q25, rg.q75, color="#bbb", alpha=0.5, label="random IQR")
+            ax.plot(rg.index, rg["med"], "--", color="#777", lw=1.5, label="random median")
+        for c, L in zip(plt.cm.viridis(np.linspace(0, 0.9, len(top))), top):
+            ax.plot(alphas, grid.loc[L].values, "-o", ms=4, lw=1.8, color=c, label=f"L{L}")
+        ax.axhline(base, color="k", lw=0.8, ls=":"); ax.axvline(0, color="#ccc", lw=0.8)
+        ax.set_ylim(-0.05, 1.05)
+        ax.set_xlabel("alpha (coefficient on steering vector)"); ax.set_ylabel("median bias_fraction")
+        ax.set_title(f"WinoQueer steering — top {top_k} layers — {label} [{es}]\n({goal}; real vs random)")
+        ax.legend(fontsize=8, ncol=2)
+        fig.tight_layout(); fig.savefig(d / f"sweep_best_layers_{es}.png", dpi=160, bbox_inches="tight"); plt.close(fig)
+        done.append(es)
+    return label, done
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Readable steering-transfer plots from existing raw CSVs.")
     ap.add_argument("--dirs", type=Path, nargs="+", required=True, help="transfer_* dirs (raw CSV inside)")
@@ -115,16 +164,25 @@ def main() -> None:
     ap.add_argument("--top_k", type=int, default=4)
     args = ap.parse_args()
 
-    dirs = [d for d in args.dirs if (d / "bbq_steering_transfer_raw.csv").exists()]
-    if not dirs:
-        raise SystemExit("no transfer dirs with bbq_steering_transfer_raw.csv found")
+    transfer_dirs = [d for d in args.dirs if (d / "bbq_steering_transfer_raw.csv").exists()]
+    sweep_dirs = [d for d in args.dirs if (d / "steering_sweep_raw.csv").exists()]
+    if not transfer_dirs and not sweep_dirs:
+        raise SystemExit("no dirs with bbq_steering_transfer_raw.csv or steering_sweep_raw.csv found")
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
+    # in-domain WinoQueer steering sweeps (per eval_set heatmap + top-K curve)
+    for d in sweep_dirs:
+        label, es = per_sweep_figures(d, args.top_k)
+        print(f"  [sweep] {label}: wrote sweep_heatmap_/sweep_best_layers_ for {es} in {d.name}")
+
     results = []
-    for d in dirs:
+    for d in transfer_dirs:
         label, delta, baseline, rnd, layers, alphas = per_condition_figures(d, args.metric, args.top_k)
         results.append((label, delta, baseline, layers, alphas))
-        print(f"  {label}: wrote transfer_heatmap.png + transfer_best_layers.png in {d.name}")
+        print(f"  [transfer] {label}: wrote transfer_heatmap.png + transfer_best_layers.png in {d.name}")
+
+    if not results:
+        return  # sweeps only — no cross-condition transfer comparison to build
 
     # shared color scale across conditions
     vmax = max(float(np.nanmax(np.abs(delta.values))) for _, delta, *_ in results) or 1e-6
@@ -139,7 +197,7 @@ def main() -> None:
 
     # summary bars: best induce / best de-bias per condition (+ random control max|Δ|)
     labels, induce, debias = [], [], []
-    for d, (label, delta, baseline, layers, alphas) in zip(dirs, results):
+    for d, (label, delta, baseline, layers, alphas) in zip(transfer_dirs, results):
         a = np.array(alphas)
         pos = delta.values[:, a > 0]; neg = delta.values[:, a < 0]
         labels.append(label)
