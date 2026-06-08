@@ -337,6 +337,9 @@ def main() -> None:
                          "applied only to matching pairs, not blindly across axes.")
     ap.add_argument("--identity", type=str, default=None,
                     help="comma list of identities (the cohort `identity` column) to filter to.")
+    ap.add_argument("--vectors_only", action="store_true",
+                    help="build + --save_vectors from all matched pairs, then exit (skip the alpha "
+                         "sweep). Cheap way to mint per-identity v_bias.")
     ap.add_argument("--plot_only", action="store_true")
     args = ap.parse_args()
 
@@ -382,7 +385,10 @@ def main() -> None:
                   f"axis={blob.get('axis')}) | eval pairs={len(test_pairs)} (axis={args.axis}) | "
                   f"alphas={alphas} | eval_sets={eval_sets} | kinds={kinds}")
         else:
-            train_pairs, test_pairs = stratified_split(pairs, args.train_frac)
+            # vectors_only: build from ALL matched pairs (no held-out test) and save — used to mint
+            # per-identity v_bias cheaply without paying for the full alpha sweep.
+            train_pairs, test_pairs = ((pairs, pairs.iloc[0:0]) if args.vectors_only
+                                       else stratified_split(pairs, args.train_frac))
             print(f"Pairs: {len(pairs)} -> train {len(train_pairs)} / test {len(test_pairs)} | "
                   f"alphas={alphas} | eval_sets={eval_sets} | kinds={kinds} | vector_position={args.vector_position}")
             vectors, norms = build_vectors(model, tokenizer, device, train_pairs, args.vector_position, n_layers)
@@ -404,6 +410,10 @@ def main() -> None:
                 "pairs_csv": str(args.pairs_csv),
             }, args.save_vectors)
             print(f"Saved steering vectors -> {args.save_vectors}")
+        if args.vectors_only:
+            print(f"vectors_only: built+saved from {len(train_pairs)} pairs; skipping the sweep.")
+            print(f"runtime_seconds: {time.perf_counter() - started:.2f}")
+            return
         # Several norm-matched random directions (not one) so the control isn't at the mercy of a
         # single draw coincidentally aligning with the bias direction.
         rand_vectors_list = ([random_matched(vectors, norms, seed_offset=s) for s in range(args.n_random_seeds)]

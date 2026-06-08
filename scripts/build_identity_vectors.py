@@ -201,6 +201,10 @@ def main() -> None:
     ap.add_argument("--dtype", choices=["float16", "bfloat16", "float32"], default="float16")
     ap.add_argument("--batch_size", type=int, default=16)
     ap.add_argument("--max_per_label", type=int, default=None, help="cap prompts/identity (debug)")
+    ap.add_argument("--per_identity", action="store_true",
+                    help="also emit one v_identity per TARGET identity (each target vs the shared "
+                         "axis reference), e.g. v_identity_sexual_orientation__gay.pt — for "
+                         "per-identity matched steering (Phase 2).")
     args = ap.parse_args()
 
     started = time.perf_counter()
@@ -249,6 +253,13 @@ def main() -> None:
     for axis, (tgt, ref) in contrasts.items():
         save_contrast(args.out_dir / f"v_identity_{axis}.pt", centroids, counts, axis, tgt, ref,
                       diag, args.tl_model_name, args.identity_csv)
+        if args.per_identity:
+            # one direction per target identity vs the SAME axis reference -> per-identity matched
+            # steering. Filename: v_identity_<axis>__<safe(label)>.pt (gay, transgender_man, ...).
+            for label in tgt:
+                safe = label.replace(" ", "_").replace("/", "-")
+                save_contrast(args.out_dir / f"v_identity_{axis}__{safe}.pt", centroids, counts,
+                              axis, [label], ref, diag, args.tl_model_name, args.identity_csv)
 
     print(f"\nruntime_seconds: {time.perf_counter() - started:.2f}")
 

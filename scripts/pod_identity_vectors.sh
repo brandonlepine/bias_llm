@@ -14,7 +14,7 @@ OUT=pod_results/identity_vectors
 echo "=== v_identity: centroids (all axes) + contrasts (SO, gender_identity) ==="
 python -u scripts/build_identity_vectors.py \
   --identity_csv data/mi_identity_prompts.csv --out_dir "$OUT" \
-  --axes all \
+  --axes all --per_identity \
   --model_path "$M" --tl_model_name "$M" --device cuda --dtype float16 --batch_size 16
 
 echo "=== DONE: $OUT (v_identity_*.pt + identity_centroids.pt) ==="

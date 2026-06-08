@@ -118,9 +118,9 @@ p_seg()      { local d=$1 c src=(); c=$(cohort_for "$d"); banner "$d : segmented
 battery() { local d=$1; p_resid "$d"; p_head "$d"; p_ablation "$d"; p_greedy "$d"; p_mlp "$d"; p_steering "$d"; p_seg "$d"; }
 
 # ---------------------------------------------------------------------------- cross / OOD steps
-s_identity() { banner "identity-only vectors (v_identity, all axes)"
+s_identity() { banner "identity-only vectors (v_identity, all axes + per-identity)"
   python -u scripts/build_identity_vectors.py --identity_csv data/mi_identity_prompts.csv \
-    --out_dir "$ROOT/identity" --axes all --batch_size 16 "${COMMON[@]}"; }
+    --out_dir "$ROOT/identity" --axes all --per_identity --batch_size 16 "${COMMON[@]}"; }
 
 s_transfer() { local T="$ROOT/transfer" V="$ROOT/transfer/vectors" WQ; WQ=$(cohort_for wq)
   banner "OOD steering transfer (WinoQueer vectors -> BBQ QA)"
@@ -191,6 +191,37 @@ s_decompose() { banner "decomposition appraisal (axis-level): v_identity / v_bia
   done
   python -u scripts/plot_steering_transfer.py --dirs "$ROOT"/decompose/* --out_dir "$ROOT/decompose/_viz" || true; }
 
+# Per-identity matched directions (Phase 2): (axis | identity-dataset label | WinoQueer cohort label).
+# Only identities present in BOTH the identity dataset and the WinoQueer cohort (so v_bias exists).
+PER_ID_TABLE=(
+  "sexual_orientation|gay|Gay"       "sexual_orientation|lesbian|Lesbian"
+  "sexual_orientation|bisexual|Bisexual" "sexual_orientation|pansexual|Pansexual"
+  "sexual_orientation|asexual|Asexual"
+  "gender_identity|transgender|Transgender" "gender_identity|nonbinary|NB"
+)
+s_per_identity() { banner "per-identity vectors + matched appraisal (Phase 2)"
+  # For each identity: mint v_bias from its WinoQueer pairs (identity-span, vectors_only = cheap),
+  # residualize against its per-identity v_identity -> v_stereotype, then apply all three back to
+  # that SAME identity's continuation pairs (matched, not blind). Needs identity --per_identity.
+  local WQ; WQ=$(cohort_for wq); local PV="$ROOT/per_identity/vectors"; mkdir -p "$PV"
+  for R in "${PER_ID_TABLE[@]}"; do IFS='|' read -r AX IDL WQL <<< "$R"
+    local VID="$ROOT/identity/v_identity_${AX}__${IDL}.pt"
+    if [[ ! -f "$VID" ]]; then echo "SKIP per_identity[$AX/$IDL]: missing $VID (run identity)" >&2; continue; fi
+    local VB="$PV/vbias_${AX}__${IDL}.pt" VS="$PV/vstereo_${AX}__${IDL}.pt"
+    echo "--- $AX/$IDL: mint v_bias from WinoQueer '$WQL' (identity-span) ---"
+    python -u scripts/run_winoqueer_steering_sweep.py --pairs_csv "$WQ" --identity "$WQL" \
+      --vector_position identity --vectors_only --save_vectors "$VB" --max_pairs 100000 "${COMMON[@]}"
+    echo "--- $AX/$IDL: residualize -> v_stereotype ---"
+    python scripts/residualize_vectors.py --bias "$VB" --identity "$VID" --out "$VS" \
+      --mode project --identity_variant identity
+    for PAIR in "identity:$VID" "bias:$VB" "stereotype:$VS"; do
+      python -u scripts/run_winoqueer_steering_sweep.py --pairs_csv "$WQ" --identity "$WQL" \
+        --load_vectors "${PAIR##*:}" --out_dir "$ROOT/per_identity/wq__${AX}__${IDL}__${PAIR%%:*}" \
+        --layers "$DECOMP_LAYERS" --max_pairs "$DECOMP_MAXPAIRS" "${COMMON[@]}"
+    done
+  done
+  python -u scripts/plot_steering_transfer.py --dirs "$ROOT"/per_identity/wq__* --out_dir "$ROOT/per_identity/_viz" || true; }
+
 s_compare() { banner "cross-dataset comparison (wq vs combined, CPU)"
   mkdir -p "$ROOT/compare"
   python -u scripts/compare_segmented_runs.py --out_dir "$ROOT/compare/head" \
@@ -216,6 +247,7 @@ run_one() {
     transfer)    s_transfer;;
     residualize) s_residualize;;
     decompose)   s_decompose;;
+    per_identity) s_per_identity;;
     compare)     s_compare;;
     all)
       # battery (incl. seg) on WinoQueer + the combined BBQ+CrowS cohort. The combined cohort keeps
@@ -238,9 +270,11 @@ DATASET BATTERIES (resid head ablation greedy mlp steering + seg):  wq  combined
   every battery ENDS with segmented (by-axis/identity; combined also by-source) analysis by default
 SINGLE PROBE:                                                  <dataset>:<probe>   e.g. wq:mlp
   probes: resid head ablation greedy mlp steering seg
-CROSS / OOD STEPS:   identity  transfer  residualize  decompose  compare
-  decompose = apply v_identity / v_bias / v_stereotype to WinoQueer continuation + BBQ QA, axis-matched
-              (needs identity+transfer+residualize; bounded by DECOMP_LAYERS / DECOMP_MAXPAIRS env)
+CROSS / OOD STEPS:   identity  transfer  residualize  decompose  per_identity  compare
+  decompose    = apply v_identity / v_bias / v_stereotype to WinoQueer continuation + BBQ QA, axis-matched
+                 (needs identity+transfer+residualize; bounded by DECOMP_LAYERS / DECOMP_MAXPAIRS env)
+  per_identity = mint per-identity v_bias/v_stereotype + apply matched to each identity's continuation
+                 (needs identity; Phase 2 = gay/lesbian/bi/pan/ace + transgender/NB)
 ALL:                 all   (= battery wq + battery combined [each incl. seg] + identity + transfer
                             + residualize + compare; combined's seg disentangles bbq vs crows)
 
