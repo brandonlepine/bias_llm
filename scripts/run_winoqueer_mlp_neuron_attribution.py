@@ -327,7 +327,11 @@ def build_group_map(pairs, cohort_csv):
         src = pairs
     if src is None or "row_id" not in src.columns or "predicate_label_provisional" not in src.columns:
         return None
-    id_col = next((c for c in ("Group_x", "Gender_ID_x", "identity") if c in src.columns), None)
+    # Identity key: prefer the CLEAN normalized column. The combined BBQ+CrowS cohort's `Group_x` is
+    # the raw surface subject (names/fragments: 'Jeff', 'Mexicos_the_best', 'th'), which spawns
+    # hundreds of junk per-identity groups; its `block` column is the normalized identity (Black,
+    # gay, a transgender man). WinoQueer has no block, so it keeps Gender_ID_x (unchanged).
+    id_col = next((c for c in ("block", "Gender_ID_x", "identity", "Group_x") if c in src.columns), None)
     if id_col is None:
         return None
     has_axis, has_block = "axis" in src.columns, "block" in src.columns
