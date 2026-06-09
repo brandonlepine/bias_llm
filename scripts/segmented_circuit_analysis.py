@@ -63,7 +63,11 @@ class Spec:
 
 def detect_spec(cohort: pd.DataFrame, args) -> Spec:
     cols = set(cohort.columns)
+    # Prefer the CLEAN normalized identity key. The combined BBQ+CrowS cohort's `Group_x` is the raw
+    # surface subject (names/fragments) -> junk per-identity groups; its `block` is the normalized
+    # identity. WinoQueer has `identity` (clean) and no block, so it's unchanged.
     identity_col = args.identity_col or ("identity" if "identity" in cols else
+                                         "block" if "block" in cols else
                                          "Group_x" if "Group_x" in cols else "Gender_ID_x")
     axis_col = args.axis_col or ("axis" if "axis" in cols else None)
     block_col = args.block_col or ("block" if "block" in cols else None)
