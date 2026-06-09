@@ -187,7 +187,11 @@ def stratified_split(pairs, train_frac, seed=0):
     deterministic for a fixed seed."""
     rng = np.random.default_rng(seed)
     train_idx, test_idx = [], []
-    for _, g in pairs.groupby("predicate", sort=True):
+    # WinoQueer has `predicate`; the combined BBQ+CrowS cohort uses `predicate_label_provisional`.
+    # Fall back gracefully, and if neither exists stratify over one group (plain shuffled split).
+    strat_col = next((c for c in ("predicate", "predicate_label_provisional") if c in pairs.columns), None)
+    groups = pairs.groupby(strat_col, sort=True) if strat_col else [(None, pairs)]
+    for _, g in groups:
         idx = list(g.index)
         rng.shuffle(idx)
         cut = int(round(len(idx) * train_frac))
