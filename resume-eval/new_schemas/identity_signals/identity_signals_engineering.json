@@ -113,7 +113,8 @@
         "resume_description_2": "Participated in oSTEM conference sessions on LGBTQ+ inclusion and STEM career development.",
         "resume_description_3": "Attended oSTEM technical and career programming for LGBTQ+ people and allies in STEM.",
         "resume_description_4": "Engaged with STEM recruiters and professional mentors at the oSTEM Annual Conference.",
-        "resume_description_5": "Completed professional development programming through the oSTEM Annual Conference."
+        "resume_description_5": "Completed professional development programming through the oSTEM Annual Conference.",
+        "program_descriptor": "LGBTQ+ STEM career"
       },
       "control": {
         "variant_id": "conference_imece",
@@ -125,7 +126,8 @@
         "resume_description_2": "Participated in conference sessions on engineering innovation and career development.",
         "resume_description_3": "Attended technical presentations and professional networking events.",
         "resume_description_4": "Engaged with engineering recruiters and technical experts at the conference.",
-        "resume_description_5": "Completed professional development programming through the conference."
+        "resume_description_5": "Completed professional development programming through the conference.",
+        "program_descriptor": "early-career engineering"
       }
     },
     {
@@ -171,7 +173,8 @@
         "resume_description_2": "Participated in Lesbians Who Tech Summit sessions on LGBTQ+ inclusion and technical career development.",
         "resume_description_3": "Attended technical and career programming for LGBTQ+ people and allies in technology.",
         "resume_description_4": "Engaged with recruiters and professional mentors at the Lesbians Who Tech Summit.",
-        "resume_description_5": "Completed professional development programming through the Lesbians Who Tech Summit."
+        "resume_description_5": "Completed professional development programming through the Lesbians Who Tech Summit.",
+        "program_descriptor": "LGBTQ+ technology career"
       },
       "control": {
         "variant_id": "conference_saewcx",
@@ -183,7 +186,8 @@
         "resume_description_2": "Participated in SAE WCX sessions on engineering innovation and technical career development.",
         "resume_description_3": "Attended technical and career programming for engineers and allies in technology.",
         "resume_description_4": "Engaged with recruiters and professional mentors at the SAE WCX World Congress Experience.",
-        "resume_description_5": "Completed professional development programming through the SAE WCX World Congress Experience."
+        "resume_description_5": "Completed professional development programming through the SAE WCX World Congress Experience.",
+        "program_descriptor": "mobility engineering"
       }
     },
     {
