@@ -27,6 +27,21 @@ MODE = {
 SECTION_ORDER = ["LEADERSHIP", "PROFESSIONAL DEVELOPMENT", "PRESENTATIONS",
                  "PROFESSIONAL MEMBERSHIPS", "AWARDS AND RECOGNITION", "COMMUNITY INVOLVEMENT"]
 
+# salience -> role word per channel (salience is INDEPENDENT of channel)
+SALIENCE_ROLES = {
+    "affiliation":  {"low": "Member", "moderate": "Active Member", "high": "Chapter Officer", "leadership": "President"},
+    "conference":   {"low": "Attendee", "moderate": "Attendee", "high": "Session Organizer", "leadership": "Session Chair"},
+    "scholarship":  {"low": "Recipient", "moderate": "Recipient", "high": "Recipient", "leadership": "Recipient"},
+    "leadership":   {"low": "Member", "moderate": "Officer", "high": "Treasurer", "leadership": "President"},
+    "volunteer":    {"low": "Volunteer", "moderate": "Volunteer Mentor", "high": "Lead Volunteer Mentor", "leadership": "Volunteer Coordinator"},
+    "presentation": {"low": "Presenter", "moderate": "Presenter", "high": "Invited Presenter", "leadership": "Session Presenter"},
+}
+SALIENCE_META = {  # signal_agency_level, signal_leadership_implied
+    "low": ("passive", False), "moderate": ("active", False),
+    "high": ("organizing", False), "leadership": ("leading", True),
+}
+LEADERSHIP_SECTION_LABEL = "LEADERSHIP & PROFESSIONAL ACTIVITIES"
+
 
 def job_proximity_map(job):
     emp = job.get("employer", {})
@@ -161,11 +176,15 @@ def _signal_description(sig, variant, description_mode):
         return gen                                   # identical across arms
     if description_mode == "identity_description_subtle":
         return gen + f" Activities focused on {variant['subtle_descriptor']}."
+    if description_mode == "strongly_explicit_identity":
+        return gen + (f" Programming centered on {variant['explicit_descriptor']}, with an explicit "
+                      f"focus on {variant['explicit_descriptor']} throughout.")
     return gen + f" Programming emphasized {variant['explicit_descriptor']}."  # explicit
 
 
-def _identity_block(sig, variant, grad, description_mode, render_mode):
-    line1 = f"- {sig['role_word']}, {variant['name']}"
+def _identity_block(sig, variant, grad, description_mode, render_mode, salience="low"):
+    role = SALIENCE_ROLES.get(sig["signal_channel"], {}).get(salience, sig["role_word"])
+    line1 = f"- {role}, {variant['name']}"
     if render_mode == "line_only":
         return line1
     date = _signal_date(sig["date_style"], grad)
@@ -177,25 +196,41 @@ def _identity_block(sig, variant, grad, description_mode, render_mode):
 
 
 def identity_sections(job, channels, arm, by_channel, grad,
-                      description_mode="organization_name_only", render_mode="descriptive_block"):
-    secs, diag = {}, []
+                      description_mode="organization_name_only", render_mode="descriptive_block",
+                      salience="low", location="bottom_section"):
+    """Return ([(section, block)], diag). location: bottom_section (per-channel sections),
+    leadership_section (all blocks grouped under one activities section), mid_resume
+    (placement handled by the caller). salience independently sets the role word."""
+    blocks, diag = [], []
+    agency, lead_implied = SALIENCE_META.get(salience, ("passive", False))
     for ch in channels:
         sig = by_channel.get(ch)
         if not sig:
             continue
         variant = sig[arm]
-        block = _identity_block(sig, variant, grad, description_mode, render_mode)
-        secs[sig["section"]] = block
-        diag.append({"section": sig["section"], "channel": ch, "signal_id": sig["signal_id"],
+        block = _identity_block(sig, variant, grad, description_mode, render_mode, salience)
+        section = LEADERSHIP_SECTION_LABEL if location == "leadership_section" else sig["section"]
+        blocks.append((section, block, ch))
+        diag.append({"section": section, "channel": ch, "signal_id": sig["signal_id"],
                      "variant_id": variant["variant_id"], "identity_ref": variant["identity_ref"],
-                     "name": variant["name"], "block": block})
-    ordered = [(s, secs[s]) for s in SECTION_ORDER if s in secs]
+                     "name": variant["name"], "block": block, "salience": salience,
+                     "signal_agency_level": agency, "signal_leadership_implied": lead_implied})
+    if location == "leadership_section":  # one combined section, bullets in channel order
+        if blocks:
+            body = "\n".join(b for _, b, _ in blocks)
+            return [(LEADERSHIP_SECTION_LABEL, body)], diag
+        return [], diag
+    secs = {}
+    for section, block, _ in blocks:
+        secs.setdefault(section, []).append(block)
+    ordered = [(sec, "\n".join(secs[sec])) for sec in SECTION_ORDER if sec in secs]
     return ordered, diag
 
 
 # ---------- full resume -------------------------------------------------------
 
-def render_base_and_signal(job, backbone, qp, identity_secs, name, city_state, rng, mode="realistic"):
+def render_base_and_signal(job, backbone, qp, identity_secs, name, city_state, rng,
+                           mode="realistic", location="bottom_section"):
     c = qp["concrete"]
     band = c["years_experience_band"]
     full = f"{name['first_name']} {name['last_name']}"
@@ -210,10 +245,21 @@ def render_base_and_signal(job, backbone, qp, identity_secs, name, city_state, r
     proj = _projects(backbone, qp, mode)
     if proj:
         parts.append("## PROJECTS\n\n" + proj)
-    parts.append("## EDUCATION\n\n" + _education(backbone, qp, band, mode))
-    base = "\n\n---\n\n".join(parts)
-    signal = "\n\n---\n\n".join(f"## {sec}\n\n{block}" for sec, block in identity_secs)
-    full_resume = base if not signal else base + "\n\n---\n\n" + signal
+    signal_parts = [f"## {sec}\n\n{block}" for sec, block in identity_secs]
+    signal = "\n\n---\n\n".join(signal_parts)
+    edu = "## EDUCATION\n\n" + _education(backbone, qp, band, mode)
+    if location == "mid_resume" and signal_parts:
+        # signal sections after PROJECTS, before EDUCATION
+        parts.extend(signal_parts)
+        parts.append(edu)
+        base_parts = [p for p in parts if p not in signal_parts]
+    else:
+        parts.append(edu)
+        base_parts = list(parts)
+        if signal_parts:
+            parts.extend(signal_parts)
+    base = "\n\n---\n\n".join(base_parts)          # base EXCLUDES the signal blocks
+    full_resume = "\n\n---\n\n".join(parts)
     return base, signal, full_resume
 
 

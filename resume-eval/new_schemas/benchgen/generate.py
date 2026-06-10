@@ -84,6 +84,29 @@ def compatible(qp, job):
     return any(lvl in axes for lvl in qp["compatible_experience_levels"])
 
 
+ALL_CHANNELS = ["affiliation", "conference", "scholarship", "leadership", "volunteer", "presentation"]
+_ABBR = {"affiliation": "A", "conference": "C", "scholarship": "S", "leadership": "L", "volunteer": "V", "presentation": "P"}
+_BAND_YEARS = {"internship_only": 0, "0_to_1_years": 1, "1_to_2_years": 2, "3_to_5_years": 4,
+               "5_to_8_years": 7, "8_to_12_years": 10, "10_to_15_years": 13}
+
+
+def factorial_cell_id(channels):
+    pres = set(channels)
+    return "CH_" + "_".join(f"{_ABBR[c]}{1 if c in pres else 0}" for c in ALL_CHANNELS)
+
+
+def candidate_relative_to_job(qp, job):
+    yrs = _BAND_YEARS.get(qp["concrete"]["years_experience_band"], 2)
+    jmin = job["requirements"].get("minimum_years_experience") or 0
+    if yrs < jmin:
+        return "underqualified"
+    if yrs > jmin + 6:
+        return "overqualified"
+    if qp["dimensions"].get("domain_fit") == "high" and yrs >= jmin:
+        return "strong_match"
+    return "near_match" if yrs <= jmin + 2 else "strong_match"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", required=True)
@@ -101,6 +124,10 @@ def main():
     description_mode = cfg.get("identity_description_mode", "organization_name_only")
     tol = cfg.get("token_tolerance", 3)
     match_mode = cfg.get("token_match_mode", "diagnostic_only")
+    salience_levels = cfg.get("salience_levels", [cfg.get("signal_salience_level", "low")])
+    explicit_levels = cfg.get("explicitness_levels", [description_mode])
+    location_levels = cfg.get("location_levels", [cfg.get("resume_location_level", "bottom_section")])
+    relevance_level = cfg.get("professional_relevance_level", "high")
 
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained(args.model)
@@ -124,49 +151,65 @@ def main():
                 qp = quals[qp_id]
                 if not compatible(qp, job):
                     skipped.append((job_id, qp_id)); continue
+                cand_rel = candidate_relative_to_job(qp, job)
+                grad = render.grad_year(qp)
                 for ic in cfg["identity_conditions"]:
-                    load = ic["identity_load"]
-                    arms = ["baseline"] if load == 0 else cfg.get("arms", ["treatment", "control", "neutral"])
-                    for nv_id in cfg["name_variants"]:
-                        name = names[nv_id]
-                        city_state = ", ".join(x for x in [job["location"].get("city"),
-                                              job["location"].get("state")] if x) or "California"
-                        paired_id = f"{job_id}|{bk_id}|{qp_id}|{ic['identity_signal_condition_id']}|{nv_id}"
-                        grad = render.grad_year(qp)
-                        for arm in arms:
-                            n_resume += 1
-                            if n_resume % 100 == 0:
-                                print(f"  rendered {n_resume} resumes", flush=True)
-                            rng = random.Random(f"{base_seed}|{paired_id}")  # base identical across arms
-                            secs, diag = render.identity_sections(job, ic["channels"], arm, by_channel,
-                                                                  grad, description_mode, render_mode)
-                            base, signal, resume = render.render_base_and_signal(
-                                job, backbone, qp, secs, name, city_state, rng, length_mode)
-                            tcounts = {"base_resume_excluding_signal_tokens": ntok(base),
-                                       "signal_block_tokens": ntok(signal),
-                                       "full_resume_tokens": ntok(resume)}
-                            for pc_id in cfg["prompt_conditions"]:
-                                cond = conds[pc_id]
-                                if cond["output_type"] == "pairwise_AB":
-                                    continue
-                                instr = fill_instruction(cond, job)
-                                prompt = assemble_prompt(system, context, resume, instr)
-                                tc = dict(tcounts, full_prompt_tokens=ntok(prompt))
-                                rows.append({
-                                    "experiment_id": cfg["experiment_id"], "job_id": job_id,
-                                    "resume_backbone_id": bk_id, "qualification_profile_id": qp_id,
-                                    "identity_signal_condition_id": ic["identity_signal_condition_id"],
-                                    "identity_load": load, "treatment_or_control": arm,
-                                    "paired_example_id": paired_id, "name_variant_id": nv_id,
-                                    "perceived_gender": name["perceived_gender"], "prompt_condition_id": pc_id,
-                                    "output_type": cond["output_type"], "readout": cond["readout"],
-                                    "resume_length_mode": length_mode, "identity_signal_render_mode": render_mode,
-                                    "identity_description_mode": description_mode, "token_match_mode": match_mode,
-                                    "signal_channels": [d["channel"] for d in diag],
-                                    "job_system_prompt": system, "instruction": instr,
-                                    "rendered_resume": resume, "rendered_prompt": prompt,
-                                    "identity_signals": diag, "token_counts": tc,
-                                })
+                    channels = ic["channels"]
+                    n_active = len(channels)
+                    arms = ["baseline"] if n_active == 0 else cfg.get("arms", ["treatment", "control", "neutral"])
+                    cell = factorial_cell_id(channels)
+                    comp = "+".join(channels) if channels else "none"
+                    chan_ind = {f"channel_{c}_present": (c in channels) for c in ALL_CHANNELS}
+                    for salience in salience_levels:
+                        for explicit in explicit_levels:
+                            for location in location_levels:
+                                for nv_id in cfg["name_variants"]:
+                                    name = names[nv_id]
+                                    city_state = ", ".join(x for x in [job["location"].get("city"),
+                                                          job["location"].get("state")] if x) or "California"
+                                    paired_id = "|".join([job_id, bk_id, qp_id, ic["identity_signal_condition_id"],
+                                                          salience, explicit, location, nv_id])
+                                    for arm in arms:
+                                        n_resume += 1
+                                        if n_resume % 200 == 0:
+                                            print(f"  rendered {n_resume} resumes", flush=True)
+                                        rng = random.Random(f"{base_seed}|{paired_id}")  # base identical across arms
+                                        secs, diag = render.identity_sections(
+                                            job, channels, arm, by_channel, grad,
+                                            description_mode=explicit, render_mode=render_mode,
+                                            salience=salience, location=location)
+                                        base, signal, resume = render.render_base_and_signal(
+                                            job, backbone, qp, secs, name, city_state, rng, length_mode, location)
+                                        tcounts = {"base_resume_excluding_signal_tokens": ntok(base),
+                                                   "signal_block_tokens": ntok(signal),
+                                                   "full_resume_tokens": ntok(resume)}
+                                        for pc_id in cfg["prompt_conditions"]:
+                                            cond = conds[pc_id]
+                                            if cond["output_type"] == "pairwise_AB":
+                                                continue
+                                            instr = fill_instruction(cond, job)
+                                            prompt = assemble_prompt(system, context, resume, instr)
+                                            tc = dict(tcounts, full_prompt_tokens=ntok(prompt))
+                                            row = {
+                                                "experiment_id": cfg["experiment_id"], "job_id": job_id,
+                                                "resume_backbone_id": bk_id, "qualification_profile_id": qp_id,
+                                                "identity_signal_condition_id": ic["identity_signal_condition_id"],
+                                                "factorial_cell_id": cell, "exact_signal_composition": comp,
+                                                "identity_load": n_active, "treatment_or_control": arm,
+                                                "paired_example_id": paired_id, "name_variant_id": nv_id,
+                                                "perceived_gender": name["perceived_gender"], "prompt_condition_id": pc_id,
+                                                "output_type": cond["output_type"], "readout": cond["readout"],
+                                                "resume_length_mode": length_mode, "identity_signal_render_mode": render_mode,
+                                                "identity_description_mode": explicit, "signal_salience_level": salience,
+                                                "resume_location_level": location, "professional_relevance_level": relevance_level,
+                                                "candidate_relative_to_job": cand_rel, "token_match_mode": match_mode,
+                                                "signal_channels": channels,
+                                                "job_system_prompt": system, "instruction": instr,
+                                                "rendered_resume": resume, "rendered_prompt": prompt,
+                                                "identity_signals": diag, "token_counts": tc,
+                                            }
+                                            row.update(chan_ind)
+                                            rows.append(row)
 
     # ---- signal-block match post-pass (vs control within each paired group) ----
     groups = {}

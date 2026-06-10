@@ -1,0 +1,106 @@
+{
+  "experiment_id": "factorial_3ch_explicitness",
+  "description": "2^3 channels x identity_explicitness (org-name-only / subtle / explicit).",
+  "jobs": [
+    "JOB_LOCKHEED_MECH_ENG_ENTRY_SUNNYVALE_2026"
+  ],
+  "backbones": [
+    "MECH_ENG_BACKBONE_001"
+  ],
+  "qualification_profiles": [
+    "QP_ENTRY",
+    "QP_ASSOCIATE_STRONG_ALIGNED"
+  ],
+  "identity_conditions": [
+    {
+      "identity_signal_condition_id": "none",
+      "identity_load": 0,
+      "channels": []
+    },
+    {
+      "identity_signal_condition_id": "A",
+      "identity_load": 1,
+      "channels": [
+        "affiliation"
+      ]
+    },
+    {
+      "identity_signal_condition_id": "C",
+      "identity_load": 1,
+      "channels": [
+        "conference"
+      ]
+    },
+    {
+      "identity_signal_condition_id": "S",
+      "identity_load": 1,
+      "channels": [
+        "scholarship"
+      ]
+    },
+    {
+      "identity_signal_condition_id": "AC",
+      "identity_load": 2,
+      "channels": [
+        "affiliation",
+        "conference"
+      ]
+    },
+    {
+      "identity_signal_condition_id": "AS",
+      "identity_load": 2,
+      "channels": [
+        "affiliation",
+        "scholarship"
+      ]
+    },
+    {
+      "identity_signal_condition_id": "CS",
+      "identity_load": 2,
+      "channels": [
+        "conference",
+        "scholarship"
+      ]
+    },
+    {
+      "identity_signal_condition_id": "ACS",
+      "identity_load": 3,
+      "channels": [
+        "affiliation",
+        "conference",
+        "scholarship"
+      ]
+    }
+  ],
+  "name_variants": [
+    "NV_M_WHITE_01",
+    "NV_M_WHITE_02",
+    "NV_F_WHITE_01",
+    "NV_F_WHITE_02"
+  ],
+  "prompt_conditions": [
+    "next_round_score_0_100",
+    "offer_score_0_100",
+    "salary_offer_within_band",
+    "signing_bonus_yes_no",
+    "signing_bonus_amount",
+    "pairwise_candidate_choice"
+  ],
+  "arms": [
+    "treatment",
+    "control",
+    "neutral"
+  ],
+  "resume_length_mode": "realistic",
+  "identity_description_mode": "organization_name_only",
+  "identity_signal_render_mode": "descriptive_block",
+  "token_match_mode": "diagnostic_only",
+  "token_tolerance": 3,
+  "seed": 0,
+  "max_examples": 0,
+  "explicitness_levels": [
+    "organization_name_only",
+    "identity_description_subtle",
+    "identity_description_explicit"
+  ]
+}

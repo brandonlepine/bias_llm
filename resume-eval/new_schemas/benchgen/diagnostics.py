@@ -32,9 +32,14 @@ def load_deltas(scored):
         if c.get("parsed_score") is None or t.get("parsed_score") is None:
             continue
         chans = set(c.get("signal_channels") or [])
+        neu = arms.get("neutral")
         rec = {"pair_id": pid, "prompt_condition": pc, "delta": c["parsed_score"] - t["parsed_score"],
+               "delta_neutral": (c["parsed_score"] - neu["parsed_score"]) if neu and neu.get("parsed_score") is not None else None,
+               "composition": c.get("exact_signal_composition", "+".join(sorted(chans)) or "none"),
                "identity_condition": c["identity_signal_condition_id"], "identity_load": c["identity_load"],
                "qual": c["qualification_profile_id"], "job": c["job_id"], "gender": c.get("perceived_gender"),
+               "salience": c.get("signal_salience_level"), "explicitness": c.get("identity_description_mode"),
+               "location": c.get("resume_location_level"), "cand_rel": c.get("candidate_relative_to_job"),
                "n_channels": len(chans)}
         for ch in CHANNELS:
             rec[ch] = int(ch in chans)
@@ -54,7 +59,7 @@ def ols(X, y):
     se = np.sqrt(np.clip(np.diag(cov), 0, None))
     with np.errstate(divide="ignore", invalid="ignore"):
         t = beta / se
-    return beta, se, t, rank, X.shape[1]
+    return beta, se, t, rank, X.shape[1], float(np.linalg.cond(X))
 
 
 def main():
@@ -93,19 +98,23 @@ def main():
 
     print("\n" + "="*70, "\n2. CHANNEL REGRESSION  (delta ~ channels [+ interactions])\n", "="*70, sep="")
     inter = [("affiliation", "conference"), ("affiliation", "scholarship"), ("conference", "scholarship")]
+    triple = ("affiliation", "conference", "scholarship")
     for pc in OUTCOMES:
         d = df[df.prompt_condition == pc].copy()
         if d.empty: continue
         active = [c for c in CHANNELS if d[c].sum() > 0]   # presentation absent in pilot_v2
         cols = ["intercept"] + active + [f"{a}:{b}" for a, b in inter if a in active and b in active]
+        if all(c in active for c in triple): cols.append("affiliation:conference:scholarship")
         Xd = {"intercept": np.ones(len(d))}
         for c in active: Xd[c] = d[c].values.astype(float)
         for a, b in inter:
             if a in active and b in active: Xd[f"{a}:{b}"] = (d[a]*d[b]).values.astype(float)
+        if "affiliation:conference:scholarship" in cols:
+            Xd["affiliation:conference:scholarship"] = (d["affiliation"]*d["conference"]*d["scholarship"]).values.astype(float)
         X = np.column_stack([Xd[c] for c in cols]); y = d["delta"].values.astype(float)
-        beta, se, t, rank, ncol = ols(X, y)
-        print(f"\n[{pc}]  n={len(d)}  design rank={rank}/{ncol}"
-              + ("  *** RANK-DEFICIENT: channels nested in load, coefficients not separately identified" if rank < ncol else ""))
+        beta, se, t, rank, ncol, cond = ols(X, y)
+        flag = "  *** RANK-DEFICIENT (aliased; cumulative/nested design — not separately identified)" if rank < ncol else "  [full rank: identified]"
+        print(f"\n[{pc}]  n={len(d)}  rank={rank}/{ncol}  cond#={cond:.1f}{flag}")
         for name, b, s, tv in zip(cols, beta, se, t):
             print(f"    {name:<26} beta={b:+10.3f}  se={s:8.3f}  t={tv:+6.2f}")
 
@@ -135,6 +144,40 @@ def main():
         v = np.array(byc[cond])
         se = v.std(ddof=1)/np.sqrt(len(v))
         print(f"    {cond:<30} T={v.mean():+.4f}  se={se:.4f}  n={len(v)}  ({'treatment penalized' if v.mean()<0 else 'treatment favored'})")
+
+    print("\n" + "="*70, "\n6. FRACTIONS FAVORING + BOOTSTRAP CI + NOISE FLOOR\n", "="*70, sep="")
+    rng = np.random.default_rng(0)
+    for pc in OUTCOMES:
+        d = df[df.prompt_condition == pc]
+        if d.empty: continue
+        x = d["delta"].values.astype(float)
+        boot = np.array([rng.choice(x, len(x)).mean() for _ in range(2000)])
+        ci = (np.percentile(boot, 2.5), np.percentile(boot, 97.5))
+        cn = d["delta_neutral"].dropna().values.astype(float)
+        floor = np.percentile(np.abs([rng.choice(cn, len(cn)).mean() for _ in range(2000)]), 97.5) if len(cn) else float("nan")
+        print(f"  {pc:<26} meanΔ={x.mean():+10.3f} 95%CI=[{ci[0]:+.3f},{ci[1]:+.3f}] se={x.std(ddof=1)/np.sqrt(len(x)):.3f} "
+              f"floor=±{floor:.3f} | favor_control={ (x>0).mean():.2f} favor_treatment={(x<0).mean():.2f}")
+
+    varying = [f for f in ["salience", "explicitness", "location", "qual", "job", "cand_rel"] if df[f].nunique() > 1]
+    if varying:
+        print("\n" + "="*70, f"\n7. EXPANDED-FACTOR REGRESSION  (delta ~ channels + {' + '.join(varying)})\n", "="*70, sep="")
+        for pc in OUTCOMES:
+            d = df[df.prompt_condition == pc]
+            if d.empty: continue
+            active = [c for c in CHANNELS if d[c].sum() > 0]
+            parts = {"intercept": np.ones(len(d))}
+            names_ = ["intercept"] + active
+            for c in active: parts[c] = d[c].values.astype(float)
+            for f in varying:                       # one-hot (drop first level)
+                lv = sorted(d[f].dropna().unique())[1:]
+                for v in lv:
+                    nm = f"{f}={v}"; names_.append(nm); parts[nm] = (d[f] == v).astype(float).values
+            X = np.column_stack([parts[n] for n in names_]); y = d["delta"].values.astype(float)
+            beta, se, t, rank, ncol, cond = ols(X, y)
+            print(f"\n[{pc}]  n={len(d)} rank={rank}/{ncol} cond#={cond:.1f}")
+            for nm, b, tv in zip(names_, beta, t):
+                if abs(tv) >= 2 or nm in active or nm == "intercept":
+                    print(f"    {nm:<26} beta={b:+10.3f}  t={tv:+6.2f}")
 
     df.to_csv(os.path.join(run_dir, "diagnostics_deltas.csv"), index=False)
     print(f"\ntidy per-pair deltas -> {os.path.join(run_dir, 'diagnostics_deltas.csv')}")
