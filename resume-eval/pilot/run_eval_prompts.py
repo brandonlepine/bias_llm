@@ -105,13 +105,14 @@ def main():
             number_ids[v] = enc[0]
     assert len(number_ids) == prompts.NUMBER_SCALE_MAX + 1, "0-100 not all single-token"
 
-    def last_logits(prompt_text):
-        ids = tok(prompt_text, return_tensors="pt").input_ids.to(device)
+    def last_logits(ids):
+        ids = ids.to(device)
         with torch.no_grad():
             return model(ids).logits[0, -1, :].float(), ids.shape[1]
 
-    def number_readout(prompt_text):
-        logits, n_prompt = last_logits(prompt_text)
+    def number_readout(resume_text, prompt_name):
+        ids = prompts.encode_readout(tok, job_text, resume_text, *prompts.single_spec(prompt_name))
+        logits, n_prompt = last_logits(ids)
         probs = torch.softmax(logits, dim=-1)
         mass = sum(probs[i].item() for i in number_ids.values())
         ev = sum(v * probs[i].item() for v, i in number_ids.items()) / max(mass, 1e-9)
@@ -120,8 +121,9 @@ def main():
                     parse_success=bool(mass > 0.5), raw_output=str(argmax_v),
                     token_count_prompt=n_prompt)
 
-    def binary_readout(prompt_text):
-        logits, n_prompt = last_logits(prompt_text)
+    def binary_readout(resume_text):
+        ids = prompts.encode_readout(tok, job_text, resume_text, *prompts.binary_spec())
+        logits, n_prompt = last_logits(ids)
         y = torch.logsumexp(logits[torch.tensor(yes_ids)], dim=0).item()
         n = torch.logsumexp(logits[torch.tensor(no_ids)], dim=0).item()
         m = max(y, n)
@@ -132,6 +134,7 @@ def main():
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     n_done = 0
+    nmass = []
     n_total = len(rows) * len(prompts.PROMPT_CONDITIONS)
     with open(args.out, "w") as outf:
         for row in rows:
@@ -148,10 +151,10 @@ def main():
             }
             for pc in prompts.PROMPT_CONDITIONS:
                 if pc["kind"] == "number":
-                    out = prompts.build_single_prompt(job_text, resume_text, pc["name"])
-                    res = number_readout(out)
+                    res = number_readout(resume_text, pc["name"])
+                    nmass.append(res["number_mass"])
                 else:
-                    res = binary_readout(prompts.build_binary_prompt(job_text, resume_text))
+                    res = binary_readout(resume_text)
                 rec = dict(meta)
                 rec["prompt_condition"] = pc["name"]
                 rec[pc["dv_key"]] = res["score"]  # canonical DV key
@@ -162,6 +165,14 @@ def main():
             if n_done % 60 == 0 or n_done == n_total:
                 print(f"  scored {n_done}/{n_total}", flush=True)
 
+    if nmass:
+        import statistics
+        mean_nm, min_nm = statistics.mean(nmass), min(nmass)
+        print(f"number-mass (QC): mean={mean_nm:.3f} min={min_nm:.3f}")
+        if mean_nm < 0.5:
+            print("  WARNING: low number-mass -- the model is not emitting bare numbers "
+                  "at the readout position (e.g. instruct preamble). EV may be unreliable; "
+                  "inspect raw_output / number_mass before trusting single_* scores.")
     print(f"Wrote {n_done} rows to {args.out}")
     print("Next: python -m pilot.analyze_prompts")
 

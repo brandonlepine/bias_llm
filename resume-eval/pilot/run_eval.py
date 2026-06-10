@@ -115,10 +115,9 @@ def main():
     if do_rubric and not is_chat:
         print("WARNING: --readout rubric on a base (non-chat) model is unreliable.")
 
-    def last_logits(prompt_text):
-        ids = tok(prompt_text, return_tensors="pt").input_ids.to(device)
+    def last_logits(ids):
         with torch.no_grad():
-            return model(ids).logits[0, -1, :].float()
+            return model(ids.to(device)).logits[0, -1, :].float()
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     n_done = 0
@@ -130,7 +129,8 @@ def main():
             rec = {k: v for k, v in row.items() if k != "file"}
 
             if do_decision:
-                logits = last_logits(prompts.build_decision_prompt(job_text, resume_text))
+                logits = last_logits(prompts.encode_readout(
+                    tok, job_text, resume_text, *prompts.decision_spec()))
                 y = torch.logsumexp(logits[yes_ids], dim=0).item()
                 n = torch.logsumexp(logits[no_ids], dim=0).item()
                 m = max(y, n)
@@ -139,8 +139,8 @@ def main():
 
             if do_dims:
                 for k in prompts.DIMENSION_KEYS:
-                    logits = last_logits(
-                        prompts.build_dimension_prompt(job_text, resume_text, k))
+                    logits = last_logits(prompts.encode_readout(
+                        tok, job_text, resume_text, *prompts.dimension_spec(k)))
                     probs = torch.softmax(logits, dim=-1)
                     dmass = sum(probs[i].item() for i in digit_ids.values())
                     ev = sum(d * probs[i].item() for d, i in digit_ids.items()) / max(dmass, 1e-9)

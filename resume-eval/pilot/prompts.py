@@ -253,3 +253,64 @@ def build_single_prompt(job_text, resume_text, prompt_name):
 def build_binary_prompt(job_text, resume_text):
     """Raw-text yes/no prompt; next token is the Yes/No answer."""
     return _prefix(job_text, resume_text) + "\n" + BINARY_QUESTION + "\nAnswer:"
+
+
+# =============================================================================
+# Unified base/chat readout encoding (supports base AND instruct models)
+# =============================================================================
+# Base Llama-3.1-8B has no chat template -> raw-text continuation (as before).
+# Llama-3.1-8B-Instruct has a chat template -> we wrap system/user/assistant and
+# CONTINUE a primed partial assistant turn so the answer token comes next, keeping
+# the identical logit/EV readouts. The chat template strips trailing whitespace
+# from message content, so for number/digit reads we re-append the space OUTSIDE
+# the content (at string level) -> the readout position still precedes a BARE
+# number/digit token (a leading-space number like " 85" is multi-token and would
+# break the EV readout).
+#
+# Scaffolds carry NO trailing space; `trailing_space=True` (numbers/digits) adds
+# it for both paths, which keeps the BASE prompts byte-identical to the originals.
+
+DECISION_SCAFFOLD = "Answer:"
+NUMBER_SCAFFOLD = "Rating (0-100):"
+
+
+def dimension_scaffold(dim_key):
+    return f"{DIMENSION_LABELS[dim_key]} (0-{SCORE_MAX}):"
+
+
+# (question, scaffold, trailing_space) per readout
+def decision_spec():
+    return (DECISION_QUESTION, DECISION_SCAFFOLD, False)
+
+
+def dimension_spec(dim_key):
+    return (_SCORE_INSTRUCTION, dimension_scaffold(dim_key), True)
+
+
+def single_spec(prompt_name):
+    return (SINGLE_QUESTIONS[prompt_name], NUMBER_SCAFFOLD, True)
+
+
+def binary_spec():
+    return (BINARY_QUESTION, DECISION_SCAFFOLD, False)
+
+
+def encode_readout(tok, job_text, resume_text, question, scaffold, trailing_space):
+    """input_ids (1,T) ending exactly before the answer token; base- or chat-aware.
+
+    Auto-detects chat models via tok.chat_template. Returns a torch LongTensor.
+    """
+    user = _job_and_resume(job_text, resume_text) + "\n" + question
+    if tok.chat_template is not None:  # instruct / chat model
+        text = tok.apply_chat_template(
+            [{"role": "system", "content": SYSTEM_PROMPT},
+             {"role": "user", "content": user},
+             {"role": "assistant", "content": scaffold}],
+            continue_final_message=True, tokenize=False)
+        add_special = False  # template already includes <|begin_of_text|>
+    else:  # base model: raw continuation (byte-identical to the original prompts)
+        text = SYSTEM_PROMPT + "\n\n" + user + "\n" + scaffold
+        add_special = True
+    if trailing_space:
+        text = text + " "
+    return tok(text, return_tensors="pt", add_special_tokens=add_special).input_ids
