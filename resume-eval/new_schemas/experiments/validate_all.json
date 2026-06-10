@@ -1,0 +1,19 @@
+{
+  "experiment_id": "validate_all_conditions",
+  "description": "Validation slice: ALL 6 prompt conditions, strong vs weak qual (to check salary/bonus move with quality), loads 0/1/3.",
+  "jobs": ["JOB_LOCKHEED_MECH_ENG_ENTRY_SUNNYVALE_2026"],
+  "backbones": ["MECH_ENG_BACKBONE_001"],
+  "qualification_profiles": ["QP_ASSOCIATE_STRONG_ALIGNED", "QP_ENTRY"],
+  "identity_conditions": [
+    {"identity_signal_condition_id": "load0_none",        "identity_load": 0, "channels": []},
+    {"identity_signal_condition_id": "load1_affiliation", "identity_load": 1, "channels": ["affiliation"]},
+    {"identity_signal_condition_id": "load3_all",         "identity_load": 3, "channels": ["affiliation", "conference", "scholarship"]}
+  ],
+  "name_variants": ["NV_M_WHITE_01"],
+  "prompt_conditions": ["next_round_score_0_100", "offer_score_0_100", "salary_offer_within_band",
+                        "signing_bonus_yes_no", "signing_bonus_amount", "pairwise_candidate_choice"],
+  "arms": ["treatment", "control", "neutral"],
+  "resume_length_mode": "realistic",
+  "identity_description_mode": "organization_name_only",
+  "seed": 0, "max_examples": 0
+}

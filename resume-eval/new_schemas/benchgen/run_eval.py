@@ -111,20 +111,26 @@ def main():
         prob = math.exp(p - m) / (math.exp(p - m) + math.exp(n - m))
         return p - n, prob
 
+    cfg = json.load(open(os.path.join(args.run_dir, "config.json")))
+    want_pairwise = "pairwise_candidate_choice" in cfg.get("prompt_conditions", [])
+    pw_instr = (loaders.load_prompt_conditions()["pairwise_candidate_choice"]["instruction"]
+                if want_pairwise else None)
+
     out_path = args.out or os.path.join(args.run_dir, "scored.jsonl")
     nmass, n_done, parse_fail = [], 0, 0
-    pairwise_groups = collections.defaultdict(dict)
+    pairwise_groups = collections.defaultdict(dict)  # built from single-resume rows below
 
     with open(out_path, "w") as outf:
         for ex in rows:
             ot = ex["output_type"]
             if ot == "pairwise_AB":
+                continue  # generator does not emit these; pairwise is constructed below
+            if want_pairwise and ex["treatment_or_control"] not in pairwise_groups[ex["paired_example_id"]]:
                 pairwise_groups[ex["paired_example_id"]][ex["treatment_or_control"]] = ex
-                continue
-            rec = {k: ex[k] for k in ("experiment_id", "job_id", "qualification_profile_id",
+            rec = {k: ex.get(k) for k in ("experiment_id", "job_id", "qualification_profile_id",
                    "identity_signal_condition_id", "identity_load", "treatment_or_control",
-                   "paired_example_id", "name_variant_id", "perceived_gender",
-                   "prompt_condition_id", "output_type")}
+                   "paired_example_id", "name_variant_id", "perceived_gender", "prompt_condition_id",
+                   "output_type", "signal_channels", "identity_description_mode", "resume_length_mode")}
             system, ub = ex["job_system_prompt"], user_body_of(ex)
             if ot == "score_0_100":
                 ev, am, mass = number_ev(system, ub)
@@ -153,16 +159,15 @@ def main():
                 parse_fail += 1; rec.update(parse_success=False, error="unknown output_type")
             outf.write(json.dumps(rec) + "\n"); n_done += 1
 
-        # pairwise: treatment vs matched control, both orders
-        for pid, arms in pairwise_groups.items():
+        # pairwise: treatment vs matched control, both orders (constructed from paired groups)
+        for pid, arms in (pairwise_groups.items() if want_pairwise else []):
             if "treatment" not in arms or "control" not in arms:
                 continue
             t, c = arms["treatment"], arms["control"]
             system = t["job_system_prompt"]
             jobctx_resumeA = lambda A, B: (
                 user_body_of(A).rsplit(A["instruction"], 1)[0])  # context+resumeA up to instruction
-            # build a 2-candidate user turn from the two resumes + the pairwise instruction
-            instr = t["instruction"]
+            instr = pw_instr  # the pairwise A/B instruction
             def two_cand(rA, rB):
                 base = user_body_of(t).rsplit("=== CANDIDATE RESUME ===", 1)[0]  # job desc part
                 return (base + f"=== CANDIDATE A RESUME ===\n{rA}\n\n"
@@ -178,7 +183,7 @@ def main():
                     "qualification_profile_id": t["qualification_profile_id"],
                     "identity_signal_condition_id": t["identity_signal_condition_id"],
                     "identity_load": t["identity_load"], "paired_example_id": pid,
-                    "prompt_condition_id": t["prompt_condition_id"], "output_type": "pairwise_AB",
+                    "prompt_condition_id": "pairwise_candidate_choice", "output_type": "pairwise_AB",
                     "order_condition": order, "candidate_a_variant_type": "treatment" if aIsTreat else "control",
                     "candidate_b_variant_type": "control" if aIsTreat else "treatment",
                     "logit_A_minus_logit_B": ld, "chosen_candidate": chosen,
