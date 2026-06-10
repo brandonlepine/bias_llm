@@ -1,0 +1,21 @@
+{
+  "experiment_id": "inspect_pairs",
+  "description": "Inspection set: covers every identity channel and loads 0-3 so the matched treatment/control/neutral resumes can be eyeballed for quality and pairing.",
+  "jobs": ["JOB_LOCKHEED_MECH_ENG_ENTRY_SUNNYVALE_2026"],
+  "backbones": ["MECH_ENG_BACKBONE_001"],
+  "qualification_profiles": ["QP_STRONG_ALIGNED_ENTRY", "QP_MODERATE_ENTRY"],
+  "identity_conditions": [
+    {"identity_signal_condition_id": "load0",             "identity_load": 0, "channels": []},
+    {"identity_signal_condition_id": "load1_affiliation", "identity_load": 1, "channels": ["affiliation"]},
+    {"identity_signal_condition_id": "load1_conference",  "identity_load": 1, "channels": ["conference"]},
+    {"identity_signal_condition_id": "load1_scholarship", "identity_load": 1, "channels": ["scholarship"]},
+    {"identity_signal_condition_id": "load2_affil_schol", "identity_load": 2, "channels": ["affiliation", "scholarship"]},
+    {"identity_signal_condition_id": "load2_affil_conf",  "identity_load": 2, "channels": ["affiliation", "conference"]},
+    {"identity_signal_condition_id": "load3_all",         "identity_load": 3, "channels": ["affiliation", "conference", "scholarship"]}
+  ],
+  "name_variants": ["NV_M_WHITE_01", "NV_F_WHITE_01"],
+  "prompt_conditions": ["next_round_score"],
+  "arms": ["treatment", "control", "neutral"],
+  "seed": 0,
+  "max_examples": 0
+}

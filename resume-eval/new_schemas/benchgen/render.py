@@ -95,11 +95,9 @@ def _pick_projects(backbone, relevance, leadership, rng):
     blocks = []
     for p in pool:
         nb = 3 if relevance == "strong" else 2
-        bullets = p["bullet_pool"][:nb]
+        bullets = [f"- {b}" for b in p["bullet_pool"][:nb]]
         if leadership in ("moderate", "high"):
-            bullets = ["- Led a small team to " + bullets[0][2:].lstrip("- ").lower()] + bullets[1:]
-        else:
-            bullets = [f"- {b}" if not b.startswith('-') else b for b in bullets]
+            bullets = ["- Led a small project team through design, analysis, and design reviews."] + bullets
         blocks.append(f"### {p['project_name']}\n{p['organization']}\n\n" + "\n".join(bullets))
     return "\n\n".join(blocks)
 
