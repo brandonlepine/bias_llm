@@ -25,7 +25,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-from .modelref import default_model
+from .modelref import default_model, dtype_kwargs
 DEFAULT_MODEL = default_model()
 
 from . import prompts
@@ -94,7 +94,7 @@ def main():
     tok = AutoTokenizer.from_pretrained(args.model)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
-    model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype).to(device).eval()
+    model = AutoModelForCausalLM.from_pretrained(args.model, **dtype_kwargs(dtype)).to(device).eval()
     is_chat = tok.chat_template is not None
 
     do_decision = args.readout in ("both", "decision")

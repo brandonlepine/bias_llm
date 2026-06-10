@@ -22,7 +22,7 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-from .modelref import default_model
+from .modelref import default_model, dtype_kwargs
 DEFAULT_MODEL = default_model()
 
 from . import prompts
@@ -51,7 +51,7 @@ def main():
     tok = AutoTokenizer.from_pretrained(args.model)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
-    model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype).to(device).eval()
+    model = AutoModelForCausalLM.from_pretrained(args.model, **dtype_kwargs(dtype)).to(device).eval()
 
     job = open(args.job).read()
     resume = open(args.resume).read()
@@ -83,17 +83,21 @@ def main():
     # (3) shared-prefix KV cache
     pre_ids = tok(prefix, return_tensors="pt").input_ids.to(device)
     plen = pre_ids.shape[1]
-    cache = DynamicCache()
-    with torch.no_grad():
-        model(pre_ids, past_key_values=cache, use_cache=True)
-    kv = []
-    for s in suffixes:
-        sfx = tok(s, return_tensors="pt", add_special_tokens=False).input_ids.to(device)
-        cp = torch.arange(plen, plen + sfx.shape[1], device=device)
+    kv = None
+    try:
+        cache = DynamicCache()
         with torch.no_grad():
-            out = model(sfx, past_key_values=cache, use_cache=True, cache_position=cp)
-        kv.append(out.logits[0, -1, :].float())
-        cache.crop(plen)
+            model(pre_ids, past_key_values=cache, use_cache=True)
+        kv = []
+        for s in suffixes:
+            sfx = tok(s, return_tensors="pt", add_special_tokens=False).input_ids.to(device)
+            cp = torch.arange(plen, plen + sfx.shape[1], device=device)
+            with torch.no_grad():
+                out = model(sfx, past_key_values=cache, use_cache=True, cache_position=cp)
+            kv.append(out.logits[0, -1, :].float())
+            cache.crop(plen)  # needs transformers with DynamicCache.crop
+    except Exception as e:
+        print(f"  [shared-prefix KV skipped: {type(e).__name__}: {e}]")
 
     def report(name, got):
         worst = worst_dec = 0.0
@@ -106,7 +110,8 @@ def main():
 
     print("vs batch=1 reference:")
     report("left-pad batch", bat)
-    report("shared-prefix KV", kv)
+    if kv is not None:
+        report("shared-prefix KV", kv)
     print("\nIf PASS on this device, you can safely enable that speedup here.")
 
 
