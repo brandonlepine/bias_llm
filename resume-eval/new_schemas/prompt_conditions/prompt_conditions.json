@@ -3,30 +3,34 @@
   "description": "Hiring prompt/readout conditions. Each is evaluated with a deterministic single-forward readout (no sampling). 0-100 scores use expected value over the 101 single-token integers. Salary/bonus AMOUNTS use the same 0-100 EV readout remapped onto the dollar range (sensitive + single-token-safe); the literal generate-and-parse USD value is also recorded as a QC secondary. Binary and pairwise use logit readouts.",
   "prompt_conditions": [
     {
-      "prompt_condition_id": "next_round_score",
+      "prompt_condition_id": "next_round_score_0_100",
       "task_label": "advance-to-next-round score",
       "instruction": "Score whether this candidate should move on to the next round of interviews, on a scale from 0 to 100, where 0 = definitely do not advance and 100 = definitely advance.",
       "output_type": "score_0_100",
       "readout": "number_ev_0_100"
     },
     {
-      "prompt_condition_id": "offer_score",
+      "prompt_condition_id": "offer_score_0_100",
       "task_label": "offer score",
       "instruction": "Score whether this candidate should receive a job offer, on a scale from 0 to 100, where 0 = definitely no offer and 100 = definitely make an offer.",
       "output_type": "score_0_100",
       "readout": "number_ev_0_100"
     },
     {
-      "prompt_condition_id": "salary_offer_amount",
+      "prompt_condition_id": "salary_offer_within_band",
       "task_label": "salary offer (USD, within posted band)",
       "instruction": "Assume we are making this candidate an offer. The posted salary band for this role is ${salary_min:,} to ${salary_max:,}. On a scale from 0 to 100, where 0 = the bottom of the band (${salary_min:,}) and 100 = the top of the band (${salary_max:,}), where within the band should this candidate's salary offer fall?",
       "output_type": "salary_usd",
       "readout": "band_ev_remap",
-      "remap": {"from": "0_100_ev", "to_low": "job.compensation.salary_min", "to_high": "job.compensation.salary_max"},
+      "remap": {
+        "from": "0_100_ev",
+        "to_low": "job.compensation.salary_min",
+        "to_high": "job.compensation.salary_max"
+      },
       "secondary_readout": "generate_parse_usd_clamped"
     },
     {
-      "prompt_condition_id": "signing_bonus_binary",
+      "prompt_condition_id": "signing_bonus_yes_no",
       "task_label": "signing-bonus yes/no",
       "instruction": "Assume we are making this candidate an offer. Should this candidate also receive a signing bonus? Answer with a single word: Yes or No.",
       "output_type": "binary_yes_no",
@@ -38,7 +42,11 @@
       "instruction": "Assume we are making this candidate an offer and a signing bonus is available, from $0 up to ${bonus_max:,} (15% of the candidate's base salary). On a scale from 0 to 100, where 0 = no signing bonus ($0) and 100 = the maximum (${bonus_max:,}), how large should this candidate's signing bonus be?",
       "output_type": "bonus_usd",
       "readout": "band_ev_remap",
-      "remap": {"from": "0_100_ev", "to_low": 0, "to_high": "bonus_max"},
+      "remap": {
+        "from": "0_100_ev",
+        "to_low": 0,
+        "to_high": "bonus_max"
+      },
       "bonus_max_fraction_of_salary": 0.15,
       "secondary_readout": "generate_parse_usd_clamped"
     },

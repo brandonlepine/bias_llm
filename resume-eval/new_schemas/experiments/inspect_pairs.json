@@ -1,21 +1,28 @@
 {
   "experiment_id": "inspect_pairs",
-  "description": "Inspection set: covers every identity channel and loads 0-3 so the matched treatment/control/neutral resumes can be eyeballed for quality and pairing.",
+  "description": "Inspection set: loads 0-5 across all 6 channels, realistic resumes, default organization_name_only descriptions.",
   "jobs": ["JOB_LOCKHEED_MECH_ENG_ENTRY_SUNNYVALE_2026"],
   "backbones": ["MECH_ENG_BACKBONE_001"],
-  "qualification_profiles": ["QP_STRONG_ALIGNED_ENTRY", "QP_MODERATE_ENTRY"],
+  "qualification_profiles": ["QP_STRONG_ENTRY", "QP_ASSOCIATE_STRONG_ALIGNED", "QP_ASSOCIATE_MODERATE"],
   "identity_conditions": [
-    {"identity_signal_condition_id": "load0",             "identity_load": 0, "channels": []},
-    {"identity_signal_condition_id": "load1_affiliation", "identity_load": 1, "channels": ["affiliation"]},
-    {"identity_signal_condition_id": "load1_conference",  "identity_load": 1, "channels": ["conference"]},
-    {"identity_signal_condition_id": "load1_scholarship", "identity_load": 1, "channels": ["scholarship"]},
-    {"identity_signal_condition_id": "load2_affil_schol", "identity_load": 2, "channels": ["affiliation", "scholarship"]},
-    {"identity_signal_condition_id": "load2_affil_conf",  "identity_load": 2, "channels": ["affiliation", "conference"]},
-    {"identity_signal_condition_id": "load3_all",         "identity_load": 3, "channels": ["affiliation", "conference", "scholarship"]}
+    {"identity_signal_condition_id": "load0_none",                 "identity_load": 0, "channels": []},
+    {"identity_signal_condition_id": "load1_affiliation",          "identity_load": 1, "channels": ["affiliation"]},
+    {"identity_signal_condition_id": "load1_conference",           "identity_load": 1, "channels": ["conference"]},
+    {"identity_signal_condition_id": "load1_scholarship",          "identity_load": 1, "channels": ["scholarship"]},
+    {"identity_signal_condition_id": "load2_affiliation_conference","identity_load": 2, "channels": ["affiliation", "conference"]},
+    {"identity_signal_condition_id": "load2_affiliation_scholarship","identity_load": 2, "channels": ["affiliation", "scholarship"]},
+    {"identity_signal_condition_id": "load3_all",                  "identity_load": 3, "channels": ["affiliation", "conference", "scholarship"]},
+    {"identity_signal_condition_id": "load4_with_leadership",      "identity_load": 4, "channels": ["affiliation", "conference", "scholarship", "leadership"]},
+    {"identity_signal_condition_id": "load5_dense_signal",         "identity_load": 5, "channels": ["affiliation", "conference", "scholarship", "leadership", "volunteer"]}
   ],
   "name_variants": ["NV_M_WHITE_01", "NV_F_WHITE_01"],
-  "prompt_conditions": ["next_round_score"],
+  "prompt_conditions": ["next_round_score_0_100"],
   "arms": ["treatment", "control", "neutral"],
+  "resume_length_mode": "realistic",
+  "identity_description_mode": "organization_name_only",
+  "identity_signal_render_mode": "descriptive_block",
+  "token_match_mode": "diagnostic_only",
+  "token_tolerance": 3,
   "seed": 0,
   "max_examples": 0
 }

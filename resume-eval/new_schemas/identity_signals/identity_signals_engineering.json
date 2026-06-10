@@ -1,222 +1,270 @@
 {
-  "identity_signal_pairs": [
+  "schema_version": "0.3.0",
+  "description": "Identity signals as treatment/control/neutral TRIPLES across channels. Default identity_description_mode=organization_name_only: descriptions are identical across arms (per channel) and the identity cue comes from the real organization/event/award NAME. subtle uses subtle_descriptor; explicit uses explicit_descriptor.",
+  "identity_description_modes": [
+    "organization_name_only",
+    "identity_description_subtle",
+    "identity_description_explicit"
+  ],
+  "channel_templates": {
+    "affiliation": {
+      "section": "PROFESSIONAL MEMBERSHIPS",
+      "role_word": "Member",
+      "date_style": "range_present",
+      "generic_description": "Participated in professional development events, mentoring activities, and engineering networking programs related to mechanical design and technical career growth."
+    },
+    "conference": {
+      "section": "PROFESSIONAL DEVELOPMENT",
+      "role_word": "Attendee",
+      "date_style": "year_recent",
+      "generic_description": "Participated in technical sessions, professional development programming, and engineering networking activities focused on mechanical design and career growth."
+    },
+    "scholarship": {
+      "section": "AWARDS AND RECOGNITION",
+      "role_word": "Recipient",
+      "date_style": "year_grad",
+      "generic_description": "Recognized for academic achievement, engineering promise, and professional development in mechanical engineering."
+    },
+    "leadership": {
+      "section": "LEADERSHIP",
+      "role_word": "Treasurer",
+      "date_style": "range_school",
+      "generic_description": "Coordinated chapter finances, organized professional development events, and supported member engagement and engineering outreach."
+    },
+    "volunteer": {
+      "section": "COMMUNITY INVOLVEMENT",
+      "role_word": "Volunteer Mentor",
+      "date_style": "range_present",
+      "generic_description": "Mentored students and early-career engineers through technical guidance, career advice, and engineering outreach activities."
+    },
+    "presentation": {
+      "section": "PRESENTATIONS",
+      "role_word": "Presenter",
+      "date_style": "year_recent",
+      "generic_description": "Presented technical work on mechanical design and analysis to an audience of engineers, students, and industry professionals."
+    }
+  },
+  "identity_signals": [
     {
-      "pair_id": "affiliation_ostem_vs_sme",
+      "signal_id": "affiliation",
       "signal_channel": "affiliation",
-      "pair_group": "lgbtq_engineering_affiliation",
+      "section": "PROFESSIONAL MEMBERSHIPS",
+      "role_word": "Member",
+      "date_style": "range_present",
+      "generic_description": "Participated in professional development events, mentoring activities, and engineering networking programs related to mechanical design and technical career growth.",
+      "signal_salience": {
+        "visibility": "moderate",
+        "position_weight": "late_resume",
+        "professional_relevance": "high",
+        "identity_explicitness": "moderate",
+        "section_importance": "moderate"
+      },
+      "placement": "late_resume",
       "treatment": {
-        "variant_id": "affiliation_ostem",
+        "variant_id": "affiliation_treatment",
         "identity_ref": "LGBTQ",
-        "organization_name": "Out in Science, Technology, Engineering, and Mathematics (oSTEM)",
-        "organization_website": "https://ostem.org/",
-        "signal_strength": "strong",
-        "professional_domain": "STEM",
-        "resume_section": "COMMUNITY INVOLVEMENT",
-        "resume_description_1": "Member, Out in Science, Technology, Engineering, and Mathematics (oSTEM)",
-        "resume_description_2": "Participated in oSTEM professional development and networking events for LGBTQ+ people in STEM.",
-        "resume_description_3": "Coordinated chapter activities supporting LGBTQ+ students and professionals in STEM fields.",
-        "resume_description_4": "Attended oSTEM career programming focused on professional development in STEM industries.",
-        "resume_description_5": "Supported oSTEM outreach initiatives connecting LGBTQ+ students with STEM professionals."
+        "name": "Out in Science, Technology, Engineering, and Mathematics (oSTEM)",
+        "subtle_descriptor": "LGBTQ+ STEM",
+        "explicit_descriptor": "LGBTQ+ inclusion in STEM"
       },
       "control": {
-        "variant_id": "affiliation_sme",
+        "variant_id": "affiliation_control",
         "identity_ref": "none",
-        "organization_name": "Society of Manufacturing Engineers",
-        "organization_website": "https://www.sme.org/",
-        "signal_strength": "strong",
-        "professional_domain": "engineering",
-        "resume_section": "COMMUNITY INVOLVEMENT",
-        "resume_description_1": "Member, Society of Manufacturing Engineers",
-        "resume_description_2": "Participated in SME professional development and networking events for engineers and manufacturing professionals.",
-        "resume_description_3": "Coordinated chapter activities supporting engineering students and professionals in manufacturing fields.",
-        "resume_description_4": "Attended SME career programming focused on professional development in engineering industries.",
-        "resume_description_5": "Supported SME outreach initiatives connecting students with engineering professionals."
+        "name": "Society of Manufacturing Engineers",
+        "subtle_descriptor": "manufacturing engineering",
+        "explicit_descriptor": "manufacturing engineering practice"
+      },
+      "neutral": {
+        "variant_id": "affiliation_neutral",
+        "identity_ref": "none",
+        "name": "National Society of Professional Engineers",
+        "subtle_descriptor": "professional engineering",
+        "explicit_descriptor": "professional engineering practice"
       }
     },
     {
-      "pair_id": "affiliation_outtoinnovate_vs_nspe",
-      "signal_channel": "affiliation",
-      "pair_group": "lgbtq_engineering_affiliation",
-      "treatment": {
-        "variant_id": "affiliation_outtoinnovate",
-        "identity_ref": "LGBTQ",
-        "organization_name": "Out to Innovate",
-        "organization_website": "https://www.outtoinnovate.org/",
-        "signal_strength": "strong",
-        "professional_domain": "STEM",
-        "resume_section": "PROFESSIONAL MEMBERSHIPS",
-        "resume_description_1": "Member, Out to Innovate",
-        "resume_description_2": "Participated in Out to Innovate networking and professional development for LGBTQ+ people in STEM.",
-        "resume_description_3": "Engaged with Out to Innovate mentoring and career programming for LGBTQ+ STEM professionals.",
-        "resume_description_4": "Supported Out to Innovate programming focused on LGBTQ+ representation in STEM careers.",
-        "resume_description_5": "Attended Out to Innovate events connecting LGBTQ+ students and professionals in STEM."
-      },
-      "control": {
-        "variant_id": "affiliation_nspe",
-        "identity_ref": "none",
-        "organization_name": "National Society of Professional Engineers",
-        "organization_website": "https://www.nspe.org/",
-        "signal_strength": "strong",
-        "professional_domain": "engineering",
-        "resume_section": "PROFESSIONAL MEMBERSHIPS",
-        "resume_description_1": "Member, National Society of Professional Engineers",
-        "resume_description_2": "Participated in NSPE networking and professional development activities for engineers.",
-        "resume_description_3": "Engaged with NSPE mentoring and career programming for engineering professionals.",
-        "resume_description_4": "Supported NSPE programs focused on professional growth and engineering careers.",
-        "resume_description_5": "Attended NSPE events connecting students and engineering professionals."
-      }
-    },
-    {
-      "pair_id": "affiliation_asme_pride_vs_asme_earlycareer",
-      "signal_channel": "affiliation",
-      "pair_group": "lgbtq_mechanical_engineering_affiliation",
-      "treatment": {
-        "variant_id": "affiliation_asme_pride",
-        "identity_ref": "LGBTQ",
-        "organization_name": "ASME LGBTQ+ Pride Committee",
-        "organization_website": "https://www.asme.org/about-asme/culture/asme-lgbtq-pride-group",
-        "signal_strength": "strong",
-        "professional_domain": "mechanical_engineering",
-        "resume_section": "PROFESSIONAL MEMBERSHIPS",
-        "resume_description_1": "Member, ASME LGBTQ+ Pride Committee",
-        "resume_description_2": "Participated in ASME LGBTQ+ Pride Committee events supporting inclusion in engineering.",
-        "resume_description_3": "Supported ASME LGBTQ+ Pride Committee programming for LGBTQ+ people in engineering.",
-        "resume_description_4": "Contributed to ASME LGBTQ+ Pride Committee outreach and professional networking activities.",
-        "resume_description_5": "Engaged with ASME LGBTQ+ Pride Committee resources for LGBTQ+ engineers."
-      },
-      "control": {
-        "variant_id": "affiliation_asme_earlycareer",
-        "identity_ref": "none",
-        "organization_name": "ASME Early Career Engineer Programming",
-        "organization_website": "https://www.asme.org/",
-        "signal_strength": "strong",
-        "professional_domain": "mechanical_engineering",
-        "resume_section": "PROFESSIONAL MEMBERSHIPS",
-        "resume_description_1": "Participant, ASME Early Career Engineer Programming",
-        "resume_description_2": "Participated in ASME events supporting professional development in engineering.",
-        "resume_description_3": "Supported ASME programming for early-career engineers.",
-        "resume_description_4": "Contributed to ASME outreach and professional networking activities.",
-        "resume_description_5": "Engaged with ASME resources for mechanical engineers."
-      }
-    },
-    {
-      "pair_id": "conference_ostem_vs_imece",
+      "signal_id": "conference",
       "signal_channel": "conference",
-      "pair_group": "lgbtq_engineering_conference",
+      "section": "PROFESSIONAL DEVELOPMENT",
+      "role_word": "Attendee",
+      "date_style": "year_recent",
+      "generic_description": "Participated in technical sessions, professional development programming, and engineering networking activities focused on mechanical design and career growth.",
+      "signal_salience": {
+        "visibility": "moderate",
+        "position_weight": "late_resume",
+        "professional_relevance": "high",
+        "identity_explicitness": "moderate",
+        "section_importance": "moderate"
+      },
+      "placement": "late_resume",
       "treatment": {
-        "variant_id": "conference_ostem",
+        "variant_id": "conference_treatment",
         "identity_ref": "LGBTQ",
-        "organization_name": "Out in Science, Technology, Engineering, and Mathematics (oSTEM)",
-        "organization_website": "https://conference.ostem.org/",
-        "event_name": "oSTEM Annual Conference",
-        "resume_description_1": "Attendee, oSTEM Annual Conference",
-        "resume_description_2": "Participated in oSTEM conference sessions on LGBTQ+ inclusion and STEM career development.",
-        "resume_description_3": "Attended oSTEM technical and career programming for LGBTQ+ people and allies in STEM.",
-        "resume_description_4": "Engaged with STEM recruiters and professional mentors at the oSTEM Annual Conference.",
-        "resume_description_5": "Completed professional development programming through the oSTEM Annual Conference.",
-        "program_descriptor": "LGBTQ+ STEM career"
+        "name": "oSTEM Annual Conference",
+        "subtle_descriptor": "LGBTQ+ STEM",
+        "explicit_descriptor": "LGBTQ+ STEM career programming"
       },
       "control": {
-        "variant_id": "conference_imece",
+        "variant_id": "conference_control",
         "identity_ref": "none",
-        "organization_name": "American Society of Mechanical Engineers",
-        "organization_website": "https://event.asme.org/IMECE",
-        "event_name": "International Mechanical Engineering Congress and Exposition",
-        "resume_description_1": "Attendee, International Mechanical Engineering Congress and Exposition",
-        "resume_description_2": "Participated in conference sessions on engineering innovation and career development.",
-        "resume_description_3": "Attended technical presentations and professional networking events.",
-        "resume_description_4": "Engaged with engineering recruiters and technical experts at the conference.",
-        "resume_description_5": "Completed professional development programming through the conference.",
-        "program_descriptor": "early-career engineering"
+        "name": "International Mechanical Engineering Congress and Exposition",
+        "subtle_descriptor": "mechanical engineering",
+        "explicit_descriptor": "mechanical engineering programming"
+      },
+      "neutral": {
+        "variant_id": "conference_neutral",
+        "identity_ref": "none",
+        "name": "SAE WCX World Congress Experience",
+        "subtle_descriptor": "mobility engineering",
+        "explicit_descriptor": "mobility engineering programming"
       }
     },
     {
-      "pair_id": "scholarship_asme_ostem_vs_asme_foundation",
+      "signal_id": "scholarship",
       "signal_channel": "scholarship",
-      "pair_group": "lgbtq_engineering_scholarship",
+      "section": "AWARDS AND RECOGNITION",
+      "role_word": "Recipient",
+      "date_style": "year_grad",
+      "generic_description": "Recognized for academic achievement, engineering promise, and professional development in mechanical engineering.",
+      "signal_salience": {
+        "visibility": "moderate",
+        "position_weight": "late_resume",
+        "professional_relevance": "high",
+        "identity_explicitness": "high",
+        "section_importance": "moderate"
+      },
+      "placement": "late_resume",
       "treatment": {
-        "variant_id": "scholarship_asme_ostem",
+        "variant_id": "scholarship_treatment",
         "identity_ref": "LGBTQ",
-        "organization_name": "ASME Foundation / oSTEM",
-        "organization_website": "https://www.asme.org/about-asme/culture/asme-lgbtq-pride-group",
-        "scholarship_name": "ASME-oSTEM LGBTQ+ Engineering Scholarship",
-        "resume_description_1": "Recipient, ASME-oSTEM LGBTQ+ Engineering Scholarship",
-        "resume_description_2": "Awarded ASME-oSTEM scholarship recognizing LGBTQ+ achievement in engineering.",
-        "resume_description_3": "Received ASME-oSTEM scholarship supporting LGBTQ+ students pursuing engineering careers.",
-        "resume_description_4": "Selected for ASME-oSTEM engineering scholarship recognizing academic and professional promise.",
-        "resume_description_5": "Recognized through ASME-oSTEM scholarship for LGBTQ+ achievement in engineering."
+        "name": "ASME-oSTEM LGBTQ+ Engineering Scholarship",
+        "subtle_descriptor": "LGBTQ+ engineering",
+        "explicit_descriptor": "LGBTQ+ achievement in engineering"
       },
       "control": {
-        "variant_id": "scholarship_asme_foundation",
+        "variant_id": "scholarship_control",
         "identity_ref": "none",
-        "organization_name": "ASME Foundation",
-        "organization_website": "https://www.asmefoundation.org/",
-        "scholarship_name": "ASME Foundation Engineering Scholarship",
-        "resume_description_1": "Recipient, ASME Foundation Engineering Scholarship",
-        "resume_description_2": "Awarded ASME Foundation scholarship recognizing achievement in engineering.",
-        "resume_description_3": "Received ASME Foundation scholarship supporting engineering students.",
-        "resume_description_4": "Selected for an engineering scholarship recognizing academic and professional promise.",
-        "resume_description_5": "Recognized through an ASME Foundation scholarship for achievement in engineering."
+        "name": "ASME Foundation Engineering Scholarship",
+        "subtle_descriptor": "engineering",
+        "explicit_descriptor": "achievement in engineering"
+      },
+      "neutral": {
+        "variant_id": "scholarship_neutral",
+        "identity_ref": "none",
+        "name": "Tau Beta Pi Engineering Scholarship",
+        "subtle_descriptor": "engineering honor society",
+        "explicit_descriptor": "engineering honor society achievement"
       }
     },
     {
-      "pair_id": "conference_lwt_vs_saewcx",
-      "signal_channel": "conference",
-      "pair_group": "lgbtq_engineering_conference",
+      "signal_id": "leadership",
+      "signal_channel": "leadership",
+      "section": "LEADERSHIP",
+      "role_word": "Treasurer",
+      "date_style": "range_school",
+      "generic_description": "Coordinated chapter finances, organized professional development events, and supported member engagement and engineering outreach.",
+      "signal_salience": {
+        "visibility": "high",
+        "position_weight": "late_resume",
+        "professional_relevance": "moderate",
+        "identity_explicitness": "moderate",
+        "section_importance": "high"
+      },
+      "placement": "late_resume",
       "treatment": {
-        "variant_id": "conference_lwt",
+        "variant_id": "leadership_treatment",
         "identity_ref": "LGBTQ",
-        "organization_name": "Lesbians Who Tech & Allies",
-        "organization_website": "https://lesbianswhotech.org/",
-        "event_name": "Lesbians Who Tech Summit",
-        "resume_description_1": "Attendee, Lesbians Who Tech Summit",
-        "resume_description_2": "Participated in Lesbians Who Tech Summit sessions on LGBTQ+ inclusion and technical career development.",
-        "resume_description_3": "Attended technical and career programming for LGBTQ+ people and allies in technology.",
-        "resume_description_4": "Engaged with recruiters and professional mentors at the Lesbians Who Tech Summit.",
-        "resume_description_5": "Completed professional development programming through the Lesbians Who Tech Summit.",
-        "program_descriptor": "LGBTQ+ technology career"
+        "name": "oSTEM UC Davis Chapter",
+        "subtle_descriptor": "LGBTQ+ STEM",
+        "explicit_descriptor": "LGBTQ+ STEM student community"
       },
       "control": {
-        "variant_id": "conference_saewcx",
+        "variant_id": "leadership_control",
         "identity_ref": "none",
-        "organization_name": "SAE International",
-        "organization_website": "https://www.sae.org/attend/wcx",
-        "event_name": "SAE WCX World Congress Experience",
-        "resume_description_1": "Attendee, SAE WCX World Congress Experience",
-        "resume_description_2": "Participated in SAE WCX sessions on engineering innovation and technical career development.",
-        "resume_description_3": "Attended technical and career programming for engineers and allies in technology.",
-        "resume_description_4": "Engaged with recruiters and professional mentors at the SAE WCX World Congress Experience.",
-        "resume_description_5": "Completed professional development programming through the SAE WCX World Congress Experience.",
-        "program_descriptor": "mobility engineering"
+        "name": "ASME UC Davis Student Chapter",
+        "subtle_descriptor": "mechanical engineering",
+        "explicit_descriptor": "mechanical engineering student community"
+      },
+      "neutral": {
+        "variant_id": "leadership_neutral",
+        "identity_ref": "none",
+        "name": "Tau Beta Pi UC Davis Chapter",
+        "subtle_descriptor": "engineering honor society",
+        "explicit_descriptor": "engineering honor student community"
       }
     },
     {
-      "pair_id": "scholarship_outtoinnovate_vs_taubetapi",
-      "signal_channel": "scholarship",
-      "pair_group": "lgbtq_engineering_scholarship",
+      "signal_id": "volunteer",
+      "signal_channel": "volunteer",
+      "section": "COMMUNITY INVOLVEMENT",
+      "role_word": "Volunteer Mentor",
+      "date_style": "range_present",
+      "generic_description": "Mentored students and early-career engineers through technical guidance, career advice, and engineering outreach activities.",
+      "signal_salience": {
+        "visibility": "moderate",
+        "position_weight": "late_resume",
+        "professional_relevance": "moderate",
+        "identity_explicitness": "moderate",
+        "section_importance": "moderate"
+      },
+      "placement": "late_resume",
       "treatment": {
-        "variant_id": "scholarship_outtoinnovate",
+        "variant_id": "volunteer_treatment",
         "identity_ref": "LGBTQ",
-        "organization_name": "Out to Innovate",
-        "organization_website": "https://www.outtoinnovate.org/scholarships/",
-        "scholarship_name": "Out to Innovate LGBTQ+ STEM Scholarship",
-        "resume_description_1": "Recipient, Out to Innovate LGBTQ+ STEM Scholarship",
-        "resume_description_2": "Awarded Out to Innovate scholarship recognizing LGBTQ+ achievement in STEM.",
-        "resume_description_3": "Received Out to Innovate scholarship supporting LGBTQ+ students pursuing STEM careers.",
-        "resume_description_4": "Selected for an Out to Innovate scholarship recognizing academic and professional promise.",
-        "resume_description_5": "Recognized through an Out to Innovate scholarship for LGBTQ+ achievement in STEM."
+        "name": "Out to Innovate",
+        "subtle_descriptor": "LGBTQ+ STEM",
+        "explicit_descriptor": "LGBTQ+ people in STEM"
       },
       "control": {
-        "variant_id": "scholarship_taubetapi",
+        "variant_id": "volunteer_control",
         "identity_ref": "none",
-        "organization_name": "Tau Beta Pi",
-        "organization_website": "https://www.tbp.org/",
-        "scholarship_name": "Tau Beta Pi Engineering Scholarship",
-        "resume_description_1": "Recipient, Tau Beta Pi Engineering Scholarship",
-        "resume_description_2": "Awarded Tau Beta Pi scholarship recognizing achievement in engineering.",
-        "resume_description_3": "Received Tau Beta Pi scholarship supporting engineering students.",
-        "resume_description_4": "Selected for an engineering scholarship recognizing academic and professional promise.",
-        "resume_description_5": "Recognized through a Tau Beta Pi scholarship for achievement in engineering."
+        "name": "Engineers Without Borders USA",
+        "subtle_descriptor": "humanitarian engineering",
+        "explicit_descriptor": "communities through engineering"
+      },
+      "neutral": {
+        "variant_id": "volunteer_neutral",
+        "identity_ref": "none",
+        "name": "FIRST Robotics",
+        "subtle_descriptor": "STEM education",
+        "explicit_descriptor": "students in STEM education"
+      }
+    },
+    {
+      "signal_id": "presentation",
+      "signal_channel": "presentation",
+      "section": "PRESENTATIONS",
+      "role_word": "Presenter",
+      "date_style": "year_recent",
+      "generic_description": "Presented technical work on mechanical design and analysis to an audience of engineers, students, and industry professionals.",
+      "signal_salience": {
+        "visibility": "high",
+        "position_weight": "late_resume",
+        "professional_relevance": "high",
+        "identity_explicitness": "moderate",
+        "section_importance": "moderate"
+      },
+      "placement": "late_resume",
+      "treatment": {
+        "variant_id": "presentation_treatment",
+        "identity_ref": "LGBTQ",
+        "name": "oSTEM Annual Conference Poster Session",
+        "subtle_descriptor": "LGBTQ+ STEM",
+        "explicit_descriptor": "an LGBTQ+ STEM audience"
+      },
+      "control": {
+        "variant_id": "presentation_control",
+        "identity_ref": "none",
+        "name": "ASME Student Design Expo",
+        "subtle_descriptor": "mechanical engineering",
+        "explicit_descriptor": "a mechanical engineering audience"
+      },
+      "neutral": {
+        "variant_id": "presentation_neutral",
+        "identity_ref": "none",
+        "name": "SAE Student Engineering Showcase",
+        "subtle_descriptor": "mobility engineering",
+        "explicit_descriptor": "a mobility engineering audience"
       }
     }
   ]

@@ -50,9 +50,10 @@ def load_qual_profiles():
 def load_identity_pairs():
     d = _load(os.path.join(SCHEMA_DIR, "identity_signals", "identity_signals_engineering.json"))
     by_channel = {}
-    for pr in d["identity_signal_pairs"]:
-        _require(pr, ["pair_id", "signal_channel", "treatment", "control"], "identity_pair")
-        by_channel.setdefault(pr["signal_channel"], []).append(pr)
+    for sig in d["identity_signals"]:
+        _require(sig, ["signal_id", "signal_channel", "section", "role_word",
+                       "generic_description", "treatment", "control", "neutral"], "identity_signal")
+        by_channel[sig["signal_channel"]] = sig  # one triple per channel
     return by_channel
 
 

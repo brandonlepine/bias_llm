@@ -92,6 +92,7 @@ def main():
 
     length_mode = cfg.get("resume_length_mode", "realistic")
     render_mode = cfg.get("identity_signal_render_mode", "descriptive_block")
+    description_mode = cfg.get("identity_description_mode", "organization_name_only")
     tol = cfg.get("token_tolerance", 3)
     match_mode = cfg.get("token_match_mode", "diagnostic_only")
 
@@ -123,9 +124,11 @@ def main():
                         city_state = ", ".join(x for x in [job["location"].get("city"),
                                               job["location"].get("state")] if x) or "California"
                         paired_id = f"{job_id}|{bk_id}|{qp_id}|{ic['identity_signal_condition_id']}|{nv_id}"
+                        grad = render.grad_year(qp)
                         for arm in arms:
                             rng = random.Random(f"{base_seed}|{paired_id}")  # base identical across arms
-                            secs, diag = render.identity_sections(job, ic["channels"], arm, by_channel, render_mode)
+                            secs, diag = render.identity_sections(job, ic["channels"], arm, by_channel,
+                                                                  grad, description_mode, render_mode)
                             base, signal, resume = render.render_base_and_signal(
                                 job, backbone, qp, secs, name, city_state, rng, length_mode)
                             tcounts = {"base_resume_excluding_signal_tokens": ntok(base),
@@ -147,6 +150,8 @@ def main():
                                     "perceived_gender": name["perceived_gender"], "prompt_condition_id": pc_id,
                                     "output_type": cond["output_type"], "readout": cond["readout"],
                                     "resume_length_mode": length_mode, "identity_signal_render_mode": render_mode,
+                                    "identity_description_mode": description_mode, "token_match_mode": match_mode,
+                                    "signal_channels": [d["channel"] for d in diag],
                                     "job_system_prompt": system, "instruction": instr,
                                     "rendered_resume": resume, "rendered_prompt": prompt,
                                     "identity_signals": diag, "token_counts": tc,
@@ -197,7 +202,7 @@ def main():
     import statistics
     fr = [r["token_counts"]["full_resume_tokens"] for r in rows]
     pt = [r["token_counts"]["full_prompt_tokens"] for r in rows]
-    print(f"experiment: {cfg['experiment_id']}  ({length_mode} / {render_mode})")
+    print(f"experiment: {cfg['experiment_id']}  ({length_mode} / {render_mode} / {description_mode})")
     print(f"wrote {len(rows)} examples -> {run_dir}/examples.jsonl")
     if skipped:
         print(f"skipped {len(skipped)} incompatible job×profile combos")

@@ -44,7 +44,9 @@ def main():
         slug = f"pair_{i:03d}_{ref['qualification_profile_id']}_{ref['identity_signal_condition_id']}_{ref['name_variant_id']}"
         lines = [f"# {slug}\n",
                  f"- job: **{ref['job_id']}**",
-                 f"- qualification_profile: **{ref['qualification_profile_id']}**  |  mode: {ref.get('resume_length_mode')} / {ref.get('identity_signal_render_mode')}",
+                 f"- qualification_profile: **{ref['qualification_profile_id']}**",
+                 f"- modes: length={ref.get('resume_length_mode')} | identity_description={ref.get('identity_description_mode')} | render={ref.get('identity_signal_render_mode')} | token_match={ref.get('token_match_mode')}",
+                 f"- signal_channels: {ref.get('signal_channels')}",
                  f"- identity_condition: **{ref['identity_signal_condition_id']}** (load {ref['identity_load']})",
                  f"- name: **{ref['name_variant_id']}** ({ref['perceived_gender']})",
                  f"- arms present: {sorted(arms.keys())}\n",

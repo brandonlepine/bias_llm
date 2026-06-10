@@ -141,6 +141,8 @@ def main():
                 usd = lo + (ev / 100.0) * (hi - lo)
                 rec.update(parsed_score=usd, usd=usd, ev_0_100=ev, band_low=lo, band_high=hi,
                            number_mass=mass, parse_success=bool(mass > 0.5))
+                if ot == "bonus_usd":
+                    rec["percent_of_salary"] = usd / max(comp["salary_max"], 1)
                 if not (lo <= usd <= hi):
                     print(f"  [clamp] {ex['paired_example_id']} {ot} {usd:.0f} outside [{lo},{hi}]")
                     rec["parsed_score"] = min(max(usd, lo), hi)
