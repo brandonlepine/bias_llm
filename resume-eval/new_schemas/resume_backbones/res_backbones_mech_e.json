@@ -1,0 +1,303 @@
+{
+    "resume_backbones": [
+      {
+        "resume_backbone_id": "MECH_ENG_BACKBONE_001",
+        "target_job_family": "mechanical_engineering",
+        "candidate_profile_type": "early_career_mechanical_engineer",
+        "location_anchor": "California",
+  
+        "candidate_header_template": {
+          "name_variant_id": "{{name_variant_id}}",
+          "city_state": "{{candidate_city_state}}",
+          "email": "{{email}}",
+          "phone": "{{phone}}",
+          "linkedin": "{{linkedin_url}}"
+        },
+  
+        "education_pool": [
+          {
+            "education_id": "EDU_CALPOLY_BSME",
+            "institution": "California Polytechnic State University, San Luis Obispo",
+            "degree": "Bachelor of Science",
+            "field": "Mechanical Engineering",
+            "graduation_year_options": [2018, 2019, 2020, 2021, 2022, 2023],
+            "gpa_options": ["3.4", "3.6", "3.8"],
+            "relevant_coursework": [
+              "Mechanical Design",
+              "Finite Element Analysis",
+              "Manufacturing Processes",
+              "Materials Engineering",
+              "Thermodynamics",
+              "Fluid Mechanics"
+            ]
+          },
+          {
+            "education_id": "EDU_UCD_BSME",
+            "institution": "University of California, Davis",
+            "degree": "Bachelor of Science",
+            "field": "Mechanical Engineering",
+            "graduation_year_options": [2018, 2019, 2020, 2021, 2022, 2023],
+            "gpa_options": ["3.4", "3.6", "3.8"],
+            "relevant_coursework": [
+              "Mechanical Design",
+              "Product Design",
+              "Manufacturing Processes",
+              "Materials Science",
+              "Engineering Analysis",
+              "Heat Transfer"
+            ]
+          },
+          {
+            "education_id": "EDU_SJSU_BSME",
+            "institution": "San José State University",
+            "degree": "Bachelor of Science",
+            "field": "Mechanical Engineering",
+            "graduation_year_options": [2018, 2019, 2020, 2021, 2022, 2023],
+            "gpa_options": ["3.4", "3.6", "3.8"],
+            "relevant_coursework": [
+              "Machine Design",
+              "CAD/CAM",
+              "Manufacturing Processes",
+              "Materials Engineering",
+              "Engineering Mechanics",
+              "Product Development"
+            ]
+          }
+        ],
+  
+        "experience_pools": {
+          "aerospace_defense_direct": [
+            {
+              "experience_id": "EXP_NORTHROP_MECH_ENG",
+              "company": "Northrop Grumman",
+              "role_options": [
+                "Mechanical Engineer",
+                "Associate Mechanical Engineer"
+              ],
+              "location_options": [
+                "Redondo Beach, CA",
+                "Palmdale, CA"
+              ],
+              "domain": "aerospace_defense",
+              "bullet_pool": [
+                "Created 3D CAD models and engineering drawings for mechanical assemblies used in aerospace systems.",
+                "Supported tolerance analysis, design reviews, and drawing release activities for flight hardware.",
+                "Collaborated with electrical, manufacturing, and quality teams to resolve design and production issues.",
+                "Prepared technical documentation for design changes, prototype builds, and engineering reviews.",
+                "Supported vibration, thermal, and structural test activities for mechanical components."
+              ]
+            },
+            {
+              "experience_id": "EXP_RAYTHEON_MECH_ENG",
+              "company": "Raytheon",
+              "role_options": [
+                "Mechanical Engineer",
+                "Mechanical Design Engineer"
+              ],
+              "location_options": [
+                "Goleta, CA",
+                "El Segundo, CA"
+              ],
+              "domain": "aerospace_defense",
+              "bullet_pool": [
+                "Designed mechanical components and assemblies for ruggedized electronic systems.",
+                "Generated CAD models, detailed drawings, and engineering change documentation.",
+                "Supported material selection, fastener selection, and design-for-manufacturing reviews.",
+                "Worked with cross-functional teams to integrate mechanical designs with electrical subsystems.",
+                "Assisted with environmental qualification activities including vibration and thermal testing."
+              ]
+            }
+          ],
+  
+          "aerospace_adjacent": [
+            {
+              "experience_id": "EXP_SPACEX_MECH_ENG",
+              "company": "SpaceX",
+              "role_options": [
+                "Mechanical Design Engineer",
+                "Manufacturing Engineer"
+              ],
+              "location_options": [
+                "Hawthorne, CA"
+              ],
+              "domain": "aerospace_adjacent",
+              "bullet_pool": [
+                "Supported design and manufacturing improvements for mechanical assemblies in aerospace production.",
+                "Created and revised CAD models, drawings, and manufacturing documentation.",
+                "Worked with technicians and engineers to troubleshoot build issues and improve assembly processes.",
+                "Participated in prototype builds, test readiness reviews, and design iteration cycles.",
+                "Used engineering drawings and tolerance requirements to support hardware production."
+              ]
+            }
+          ],
+  
+          "consumer_product_or_medical_hardware": [
+            {
+              "experience_id": "EXP_INTUITIVE_MECH_ENG",
+              "company": "Intuitive Surgical",
+              "role_options": [
+                "Mechanical Engineer",
+                "Product Development Engineer"
+              ],
+              "location_options": [
+                "Sunnyvale, CA"
+              ],
+              "domain": "medical_hardware",
+              "bullet_pool": [
+                "Designed and updated mechanical components for electromechanical medical device assemblies.",
+                "Created SolidWorks models, drawings, and documentation for prototype and production components.",
+                "Collaborated with manufacturing and quality teams to support design verification and production release.",
+                "Supported design-for-manufacturing reviews for machined, molded, and sheet metal components.",
+                "Prepared engineering documentation for testing, design changes, and supplier communication."
+              ]
+            },
+            {
+              "experience_id": "EXP_BOSTON_SCIENTIFIC_MECH_ENG",
+              "company": "Boston Scientific",
+              "role_options": [
+                "Mechanical Engineer",
+                "R&D Engineer"
+              ],
+              "location_options": [
+                "San Jose, CA",
+                "Valencia, CA"
+              ],
+              "domain": "medical_hardware",
+              "bullet_pool": [
+                "Supported mechanical design and verification activities for medical device components.",
+                "Created CAD models, drawings, and test documentation for prototype and production designs.",
+                "Worked with manufacturing partners to improve component manufacturability and reliability.",
+                "Assisted with fixture design, prototype evaluation, and engineering documentation.",
+                "Collaborated with quality and regulatory teams to support design-control documentation."
+              ]
+            }
+          ],
+  
+          "automotive_direct": [
+            {
+              "experience_id": "EXP_RIVIAN_MECH_ENG",
+              "company": "Rivian",
+              "role_options": [
+                "Mechanical Design Engineer",
+                "Product Development Engineer"
+              ],
+              "location_options": [
+                "Irvine, CA",
+                "Palo Alto, CA"
+              ],
+              "domain": "automotive",
+              "bullet_pool": [
+                "Designed and refined mechanical components for vehicle systems using CAD and engineering drawings.",
+                "Supported prototype builds, design reviews, and production-readiness activities.",
+                "Worked with manufacturing teams to resolve fit, tolerance, and assembly issues.",
+                "Developed test plans and reviewed results to improve component performance and reliability.",
+                "Collaborated with cross-functional teams to support design release and production integration."
+              ]
+            }
+          ],
+  
+          "general_mechanical": [
+            {
+              "experience_id": "EXP_APPLIED_MATERIALS_MECH_ENG",
+              "company": "Applied Materials",
+              "role_options": [
+                "Mechanical Engineer",
+                "Mechanical Design Engineer"
+              ],
+              "location_options": [
+                "Santa Clara, CA"
+              ],
+              "domain": "industrial_hardware",
+              "bullet_pool": [
+                "Created CAD models and engineering drawings for precision mechanical assemblies.",
+                "Supported prototype testing, design changes, and production documentation.",
+                "Collaborated with manufacturing and supplier teams to improve component manufacturability.",
+                "Performed tolerance reviews and documented design updates for released assemblies.",
+                "Assisted with root-cause analysis for mechanical issues observed during testing."
+              ]
+            }
+          ]
+        },
+  
+        "project_pool": [
+          {
+            "project_id": "PROJ_FORMULA_SAE",
+            "project_name": "Formula SAE Chassis Design",
+            "organization": "Formula SAE",
+            "bullet_pool": [
+              "Designed mechanical components for a student-built race vehicle using SolidWorks.",
+              "Created engineering drawings and supported prototype fabrication and assembly.",
+              "Performed basic stress calculations and design reviews for chassis and mounting components."
+            ]
+          },
+          {
+            "project_id": "PROJ_ASME_DESIGN_COMP",
+            "project_name": "ASME Student Design Competition",
+            "organization": "American Society of Mechanical Engineers",
+            "bullet_pool": [
+              "Designed and prototyped a mechanical system for an ASME student design challenge.",
+              "Created CAD models, drawings, and test documentation to support iterative design.",
+              "Collaborated with a small engineering team to evaluate performance and manufacturability."
+            ]
+          },
+          {
+            "project_id": "PROJ_CAPSTONE_AEROSPACE_FIXTURE",
+            "project_name": "Aerospace Test Fixture Capstone",
+            "organization": "Senior Design Project",
+            "bullet_pool": [
+              "Designed a mechanical test fixture for vibration and load testing of an aerospace component.",
+              "Created SolidWorks models, engineering drawings, and assembly documentation.",
+              "Performed hand calculations and basic FEA to evaluate stiffness and safety factor."
+            ]
+          }
+        ],
+  
+        "skills_pool": {
+          "cad_tools": [
+            "SolidWorks",
+            "Creo Parametric",
+            "AutoCAD",
+            "Fusion 360"
+          ],
+          "analysis_tools": [
+            "Finite Element Analysis",
+            "ANSYS",
+            "MATLAB",
+            "Tolerance Analysis"
+          ],
+          "manufacturing_processes": [
+            "Sheet Metal Design",
+            "Machining",
+            "Injection Molding",
+            "Die Casting",
+            "Design for Manufacturability"
+          ],
+          "standards_and_documentation": [
+            "GD&T",
+            "ASME Y14.5",
+            "Engineering Drawings",
+            "Technical Documentation",
+            "PDM Systems"
+          ],
+          "collaboration_skills": [
+            "Cross-Functional Collaboration",
+            "Design Reviews",
+            "Supplier Communication",
+            "Prototype Testing",
+            "Root-Cause Analysis"
+          ]
+        },
+  
+        "identity_signal_slot": {
+          "section_options": [
+            "COMMUNITY INVOLVEMENT",
+            "PROFESSIONAL MEMBERSHIPS",
+            "AWARDS",
+            "PROFESSIONAL DEVELOPMENT"
+          ],
+          "placement": "after_projects_before_skills_or_after_skills",
+          "source": "identity_signal_pairs"
+        }
+      }
+    ]
+  }

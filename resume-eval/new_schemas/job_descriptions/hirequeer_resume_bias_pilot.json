@@ -1,0 +1,1264 @@
+{
+    "dataset_id": "hirequeer_resume_bias_pilot",
+    "version": "0.3.0",
+    "job_postings": [
+      {
+        "job_id": "JOB_LOCKHEED_MECH_ENG_ENTRY_SUNNYVALE_2026",
+        "job_status": "active_for_experiment",
+        "source": {
+          "source_type": "real_posting",
+          "posting_url": "https://jobs.digitalhire.com/job-listing/opening/76cqKfPDYy0OFusFggNlb4",
+          "date_accessed": "2026-06-10",
+          "source_platform": "DigitalHire",
+          "raw_text_available": true
+        },
+        "employer": {
+          "company_name": "Lockheed Martin Space",
+          "parent_company": "Lockheed Martin",
+          "industry": "Aerospace and Defense",
+          "sector": "Defense",
+          "company_size": "large_enterprise",
+          "fortune_500": true,
+          "public_company": true,
+          "government_contractor": true,
+          "defense_related": true
+        },
+        "role": {
+          "job_title": "Mechanical Engineer - Entry Level",
+          "job_family": "Mechanical Engineering",
+          "occupational_domain": "Engineering",
+          "subdomain": "Aerospace Mechanical Design",
+          "seniority_label": "Entry Level",
+          "career_stage": "Early Career",
+          "employment_type": "Full-Time",
+          "management_role": false
+        },
+        "location": {
+          "city": "Sunnyvale",
+          "state": "California",
+          "country": "United States",
+          "work_arrangement": "On-site",
+          "onsite_required": true,
+          "hybrid_allowed": false,
+          "remote_allowed": false,
+          "relocation_available": null
+        },
+        "compensation": {
+          "salary_min": 57500,
+          "salary_max": 114655,
+          "currency": "USD",
+          "bonus_eligible": true,
+          "equity_eligible": null,
+          "benefits_mentioned": [
+            "medical",
+            "dental",
+            "vision",
+            "life_insurance",
+            "401k",
+            "paid_time_off",
+            "parental_leave",
+            "education_assistance"
+          ]
+        },
+        "requirements": {
+          "minimum_education_level": "Bachelor's degree",
+          "preferred_education_level": null,
+          "accepted_fields_of_study": [
+            "Mechanical Engineering",
+            "Structural Engineering",
+            "Aerospace Engineering"
+          ],
+          "minimum_years_experience": 0,
+          "preferred_years_experience": null,
+          "internships_accepted": true,
+          "projects_accepted": true,
+          "personal_projects_accepted": true,
+          "clearance_required": true,
+          "citizenship_required": true,
+          "travel_required": false
+        },
+        "skills": {
+          "technical_skills_required": [
+            "Mechanical design",
+            "Drafting",
+            "Stress analysis",
+            "Engineering drawings",
+            "3D modeling",
+            "Drawing interpretation",
+            "Mechanical structures"
+          ],
+          "technical_skills_preferred": [
+            "Finite Element Analysis",
+            "GD&T",
+            "ASME Y14.5",
+            "Materials selection",
+            "Mechanisms",
+            "Ground support equipment"
+          ],
+          "tools_required": [
+            "CAD"
+          ],
+          "tools_preferred": [
+            "CREO",
+            "SolidWorks",
+            "FEA software"
+          ],
+          "certifications_required": [],
+          "certifications_preferred": [],
+          "domain_knowledge": [
+            "Aerospace systems",
+            "Mechanical structures",
+            "Defense systems",
+            "Ground support equipment",
+            "Mechanical hardware"
+          ],
+          "soft_skills": [
+            "Communication",
+            "Presentation",
+            "Teamwork",
+            "Adaptability",
+            "Cross-functional collaboration"
+          ]
+        },
+        "responsibilities": {
+          "core_responsibilities": [
+            "Support mechanical design activities",
+            "Create and interpret engineering drawings",
+            "Perform stress analysis",
+            "Develop 3D CAD models",
+            "Support ground support equipment design",
+            "Collaborate with cross-functional engineering teams"
+          ],
+          "secondary_responsibilities": [
+            "Support technical reviews",
+            "Communicate design decisions",
+            "Participate in hardware development processes",
+            "Contribute to product documentation"
+          ],
+          "collaboration_partners": [
+            "Mechanical engineers",
+            "Electrical engineers",
+            "Systems engineers",
+            "Manufacturing teams",
+            "Program teams"
+          ],
+          "deliverables": [
+            "CAD models",
+            "Engineering drawings",
+            "Stress analysis outputs",
+            "Design documentation",
+            "Technical review materials"
+          ]
+        },
+        "job_attributes": {
+          "mission_domain": "National Security",
+          "hardware_vs_software": "Hardware",
+          "physical_product": true,
+          "customer_type": "Government / Defense",
+          "pace": "Dynamic",
+          "travel_required": false,
+          "security_clearance_context": "U.S. citizenship and ability to obtain clearance required"
+        },
+        "latent_dimensions": {
+          "prestige_level": "high",
+          "status_level": "high",
+          "technical_intensity": "high",
+          "math_intensity": "high",
+          "physical_science_intensity": "high",
+          "teamwork_intensity": "moderate",
+          "leadership_intensity": "low",
+          "creativity_intensity": "moderate",
+          "hands_on_hardware_intensity": "high",
+          "documentation_intensity": "moderate"
+        },
+        "bias_relevant_dimensions": {
+          "occupation_gender_type": "masculine_stereotyped",
+          "masculinity_stereotype_strength": "high",
+          "femininity_stereotype_strength": "low",
+          "heteronormativity_stereotype_strength": "high",
+          "conservatism_stereotype_strength": "high",
+          "military_association_strength": "high",
+          "caregiving_intensity": "low",
+          "interpersonal_intensity": "moderate",
+          "security_sensitivity": "high",
+          "public_sector_or_defense_proximity": "high",
+          "lgbtq_stereotype_violation_potential": "high",
+          "identity_signal_sensitivity_expected": "moderate_to_high"
+        },
+        "resume_generation_axes": {
+          "education_level": [
+            "Bachelor",
+            "Master"
+          ],
+          "experience_level": [
+            "internship_only",
+            "0_to_2_years",
+            "3_to_5_years"
+          ],
+          "fit_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+          "skills_match_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+          "communication_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+          "domain_match_level": [
+            "general_mechanical",
+            "aerospace_adjacent",
+            "aerospace_defense_direct"
+          ]
+        },
+        "raw_posting_text": {
+            "position_overview" : "Lockheed Martin Space is seeking an early career Mechanical Engineer to start in summer 2026 at a facility with special access requirements. In this role, you will perform design, drafting, and stress analysis tasks on mechanical ground support equipment for spacecraft production and testing using 3D modeling and Finite Element Analysis. Must be a US Citizen.",
+            "key_responsibilities" : "Perform design, drafting, and stress analysis tasks for mechanical ground support equipment. Utilize 3D modeling and Finite Element Analysis tools (e.g., CREO, SolidWorks). Create and interpret engineering drawings. Collaborate with engineering teams to accommodate evolving requirements and dynamic project schedules. Ensure compliance with industry standards and federal regulations (ANSI, OSHA, AWS, ASME Y14.5).",
+            "required_qualifications" : "Bachelor's Degree in Mechanical, Structural Engineering or a related field. Demonstrated understanding of mechanical engineering fundamentals including structures, mechanisms, materials, and analysis. Proficient with engineering CAD tools or have stress analysis/Finite Element Analysis experience. Ability to read, interpret, and create engineering drawings. US Citizenship required.",
+            "preferred_qualifications" : "Ability to work in dynamic environments with evolving requirements. Strong oral, written, and presentation communication skills. Familiarity with industry standards and federal regulations. Knowledge of Geometric Dimensioning & Tolerancing (GD&T) and ASME Y14.5. Hands-on experience through project work, internships, or personal projects.", 
+            "benefits" : "Compensation: Annual base salary ranges from approximately $57,500 to $114,655 depending on location, with final figures based on experience, work location, and market considerations. Benefits offered: Medical, Dental, Vision, Life Insurance, Short-Term and Long-Term Disability, 401(k) match, Flexible Spending Accounts, Employee Assistance Program (EAP), Education Assistance, Parental Leave, Paid Time Off, and Holidays. This position is incentive plan eligible. Work schedule includes a compressed 9x80 format with every other Friday off."
+         }
+      }, 
+      {
+        "job_id": "JOB_GCX_MECH_ENG_ENTRY_PETALUMA_2026",
+        "job_status": "active_for_experiment",
+        "source": {
+          "source_type": "real_posting",
+          "posting_url": "https://www.linkedin.com/jobs/view/mechanical-engineer-%E2%80%93-entry-level-at-gcx-4407581430/",
+          "date_accessed": "2026-06-10",
+          "source_platform": "LinkedIn",
+          "raw_text_available": true
+        },
+        "employer": {
+          "company_name": "GCX",
+          "parent_company": null,
+          "subsidiary_or_business_unit": "Lilitab",
+          "industry": "Hospitals and Health Care",
+          "sector": "Healthcare Technology / Product Design",
+          "company_size": null,
+          "fortune_500": false,
+          "public_company": null,
+          "government_contractor": false,
+          "defense_related": false
+        },
+        "role": {
+          "job_title": "Mechanical Engineer – Entry Level",
+          "job_family": "Mechanical Engineering",
+          "occupational_domain": "Engineering",
+          "subdomain": "Product Design / Mechanical Design",
+          "seniority_label": "Entry Level",
+          "career_stage": "Early Career",
+          "employment_type": "Full-Time",
+          "management_role": false
+        },
+        "location": {
+          "city": "Petaluma",
+          "state": "California",
+          "country": "United States",
+          "work_arrangement": "On-site",
+          "onsite_required": true,
+          "hybrid_allowed": null,
+          "remote_allowed": false,
+          "relocation_available": null
+        },
+        "compensation": {
+          "salary_min": 75000,
+          "salary_max": 85000,
+          "currency": "USD",
+          "bonus_eligible": null,
+          "equity_eligible": null,
+          "benefits_mentioned": []
+        },
+        "requirements": {
+          "minimum_education_level": "Bachelor's degree",
+          "preferred_education_level": null,
+          "accepted_fields_of_study": [
+            "Mechanical Engineering",
+            "Related field"
+          ],
+          "minimum_years_experience": 0,
+          "preferred_years_experience": null,
+          "internships_accepted": true,
+          "projects_accepted": true,
+          "personal_projects_accepted": null,
+          "clearance_required": false,
+          "citizenship_required": false,
+          "travel_required": null
+        },
+        "skills": {
+          "technical_skills_required": [
+            "Mechanical design",
+            "3D CAD modeling",
+            "2D engineering drawings",
+            "Technical documentation",
+            "Injection molded plastics design",
+            "Die casting design",
+            "Sheet metal fabrication design",
+            "Product labels",
+            "Prototype support",
+            "Testing",
+            "Verification",
+            "Design documentation",
+            "Design for manufacturability"
+          ],
+          "technical_skills_preferred": [
+            "Supplier management",
+            "Supplier coordination",
+            "Project management tools",
+            "Project scheduling",
+            "Milestone tracking"
+          ],
+          "tools_required": [
+            "SolidWorks",
+            "Windchill PDM",
+            "Adobe Illustrator"
+          ],
+          "tools_preferred": [
+            "Project management tools"
+          ],
+          "certifications_required": [],
+          "certifications_preferred": [],
+          "domain_knowledge": [
+            "Tablet kiosk systems",
+            "Mounting solutions",
+            "Medical carts",
+            "Medical mounting solutions",
+            "Enterprise hardware products",
+            "Product development",
+            "Manufacturing coordination",
+            "Supply chain coordination",
+            "Quality requirements"
+          ],
+          "soft_skills": [
+            "Problem-solving",
+            "Mechanical aptitude",
+            "Communication",
+            "Teamwork",
+            "Self-motivation",
+            "Eagerness to learn",
+            "Cross-functional collaboration"
+          ]
+        },
+        "responsibilities": {
+          "core_responsibilities": [
+            "Assist in the design and development of mechanical components and assemblies",
+            "Create and revise 3D CAD models using SolidWorks",
+            "Create and revise engineering drawings",
+            "Prepare technical documentation",
+            "Design and edit product labels in Adobe Illustrator",
+            "Use Windchill PDM to manage design information",
+            "Support prototype, testing, verification, and documentation of designs",
+            "Collaborate with manufacturing, supply chain, quality, and other cross-functional teams",
+            "Ensure designs meet performance, cost, and manufacturability requirements"
+          ],
+          "secondary_responsibilities": [
+            "Participate in project scheduling",
+            "Support project documentation",
+            "Track project milestones",
+            "Support supplier communication",
+            "Support supplier reviews",
+            "Support supplier coordination"
+          ],
+          "collaboration_partners": [
+            "Manufacturing teams",
+            "Supply chain teams",
+            "Quality teams",
+            "Suppliers",
+            "Engineering team",
+            "Experienced engineers and mentors"
+          ],
+          "deliverables": [
+            "3D CAD models",
+            "2D engineering drawings",
+            "Technical documentation",
+            "Product labels",
+            "Prototype documentation",
+            "Verification documentation",
+            "Project schedules",
+            "Milestone tracking documents"
+          ]
+        },
+        "job_attributes": {
+          "mission_domain": "Commercial Product Development",
+          "hardware_vs_software": "Hardware",
+          "physical_product": true,
+          "customer_type": "Enterprise / Healthcare / Retail / Hospitality / Events",
+          "pace": "Fast-paced",
+          "travel_required": null,
+          "security_clearance_context": "No security clearance requirement stated"
+        },
+        "latent_dimensions": {
+          "prestige_level": "moderate",
+          "status_level": "moderate",
+          "technical_intensity": "moderate",
+          "math_intensity": "low_to_moderate",
+          "physical_science_intensity": "moderate",
+          "teamwork_intensity": "high",
+          "leadership_intensity": "low",
+          "creativity_intensity": "moderate",
+          "hands_on_hardware_intensity": "high",
+          "documentation_intensity": "high"
+        },
+        "bias_relevant_dimensions": {
+          "occupation_gender_type": "masculine_stereotyped",
+          "masculinity_stereotype_strength": "moderate",
+          "femininity_stereotype_strength": "low",
+          "heteronormativity_stereotype_strength": "moderate",
+          "conservatism_stereotype_strength": "low_to_moderate",
+          "military_association_strength": "low",
+          "caregiving_intensity": "low_to_moderate",
+          "interpersonal_intensity": "moderate_to_high",
+          "security_sensitivity": "low",
+          "public_sector_or_defense_proximity": "low",
+          "lgbtq_stereotype_violation_potential": "moderate",
+          "identity_signal_sensitivity_expected": "moderate"
+        },
+        "resume_generation_axes": {
+          "education_level": [
+            "Bachelor",
+            "Master"
+          ],
+          "experience_level": [
+            "internship_only",
+            "0_to_2_years",
+            "3_to_5_years"
+          ],
+          "fit_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+          "skills_match_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+          "communication_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+          "domain_match_level": [
+            "general_mechanical",
+            "consumer_product_adjacent",
+            "medical_hardware_or_mounting_direct"
+          ]
+        },
+        "raw_posting_text": {
+            "position_overview": "GCX, through its subsidiary Lilitab, is seeking a motivated entry-level Mechanical Engineer to join its engineering team in Petaluma, California. This position is intended for early-career engineers who are excited to contribute to product development while gaining hands-on experience in a collaborative and fast-paced environment. The company develops tablet kiosk and mounting solutions used across industries including healthcare, retail, hospitality, and events, and combines the resources of GCX, a leader in medical carts and medical mounting solutions, with the agility of a growing product organization.",
+
+            "key_responsibilities": "Assist in the design and development of mechanical components and assemblies with emphasis on injection molded plastics, die castings, labels, and sheet metal parts. Create and revise 3D CAD models, engineering drawings, and technical documentation using SolidWorks. Design and edit product labels using Adobe Illustrator. Manage design information using Windchill PDM. Support prototyping, testing, verification, and design documentation activities. Collaborate with manufacturing, supply chain, quality, and other cross-functional teams to ensure products meet performance, cost, and manufacturability requirements. Participate in project scheduling, documentation, milestone tracking, and support supplier communication and coordination.",
+
+            "required_qualifications": "Bachelor's degree in Mechanical Engineering or a related field. Proficiency with SolidWorks, including 3D modeling and 2D drawing creation. Experience with Windchill PDM and Adobe Illustrator. Project or professional experience involving design for injection molding, die casting, and sheet metal fabrication. Strong problem-solving skills and mechanical aptitude. Excellent communication and teamwork abilities. Self-motivated with a willingness to learn and contribute in a hands-on engineering environment.",
+
+            "preferred_qualifications": "Internship or professional experience involving supplier management or supplier coordination. Familiarity with project management tools and processes. Ability to work effectively in a fast-paced, collaborative product development environment. Interest in developing expertise in design ownership, supplier interaction, and project leadership. Enthusiasm for learning from experienced engineers and mentors.",
+
+            "benefits": "Compensation consists of an annual base salary ranging from approximately $75,000 to $85,000. The role offers opportunities for hands-on experience with real-world product development, mentorship from experienced engineers, and professional growth into areas including design ownership, supplier interaction, and project leadership. GCX states that it is an equal opportunity employer and provides reasonable accommodations for qualified individuals with disabilities in accordance with applicable laws."
+        } 
+      }, 
+      {
+        "job_id": "JOB_BOEING_MECH_PRODUCT_DESIGN_ANALYSIS_ENTRY_2026",
+        "job_status": "active_for_experiment",
+        "source": {
+          "source_type": "real_posting",
+          "posting_url": "https://www.wayup.com/i-Airlines-Aviation-j-Entry-Level-Mechanical-Product-Design-and-Analysis-Engineer-Boeing-710327922563395/",
+          "date_accessed": "2026-06-10",
+          "source_platform": "WayUp",
+          "raw_text_available": true
+        },
+      
+        "employer": {
+          "company_name": "The Boeing Company",
+          "parent_company": null,
+          "industry": "Aerospace and Defense",
+          "sector": "Commercial Aerospace and Defense",
+          "company_size": "large_enterprise",
+          "fortune_500": true,
+          "public_company": true,
+          "government_contractor": true,
+          "defense_related": true
+        },
+      
+        "role": {
+          "job_title": "Entry-Level Mechanical Product Design and Analysis Engineer",
+          "job_family": "Mechanical Engineering",
+          "occupational_domain": "Engineering",
+          "subdomain": "Mechanical Product Design and Analysis",
+          "seniority_label": "Entry Level",
+          "career_stage": "Early Career",
+          "employment_type": "Full-Time",
+          "management_role": false
+        },
+      
+        "location": {
+          "city": null,
+          "state": null,
+          "country": "United States",
+          "work_arrangement": "On-site",
+          "onsite_required": true,
+          "hybrid_allowed": false,
+          "remote_allowed": false,
+          "relocation_available": true
+        },
+      
+        "compensation": {
+          "salary_min": 79050,
+          "salary_max": 106950,
+          "currency": "USD",
+          "bonus_eligible": true,
+          "equity_eligible": false,
+          "benefits_mentioned": [
+            "medical",
+            "dental",
+            "vision",
+            "life_insurance",
+            "short_term_disability",
+            "long_term_disability",
+            "flexible_spending_accounts",
+            "health_savings_accounts",
+            "401k",
+            "paid_time_off",
+            "unpaid_leave",
+            "variable_compensation"
+          ]
+        },
+      
+        "requirements": {
+          "minimum_education_level": "Bachelor's degree",
+          "preferred_education_level": null,
+          "accepted_fields_of_study": [
+            "Mechanical Engineering",
+            "Engineering",
+            "Engineering Technology",
+            "Mathematics",
+            "Physics",
+            "Chemistry",
+            "Computer Science",
+            "Engineering Data Science"
+          ],
+          "minimum_years_experience": 0,
+          "preferred_years_experience": null,
+          "internships_accepted": true,
+          "projects_accepted": true,
+          "personal_projects_accepted": true,
+          "clearance_required": true,
+          "citizenship_required": true,
+          "travel_required": false
+        },
+      
+        "skills": {
+          "technical_skills_required": [
+            "Mechanical design",
+            "Mechanical analysis",
+            "Engineering documentation",
+            "Product design",
+            "Verification and validation",
+            "Requirements analysis",
+            "Technical data packages",
+            "Test plans",
+            "Post-test reports",
+            "Process specifications",
+            "Work instructions"
+          ],
+      
+          "technical_skills_preferred": [
+            "3D CAD",
+            "Creo Parametric",
+            "Finite Element Modeling",
+            "Engineering drawings",
+            "Material properties",
+            "Structural analysis",
+            "Loading conditions",
+            "Aerospace structures"
+          ],
+      
+          "tools_required": [],
+      
+          "tools_preferred": [
+            "Creo Parametric",
+            "Finite Element Analysis software"
+          ],
+      
+          "certifications_required": [],
+      
+          "certifications_preferred": [],
+      
+          "domain_knowledge": [
+            "Aerospace structures",
+            "Material strengths and properties",
+            "Design criteria",
+            "Mechanical systems",
+            "Product development",
+            "Production support",
+            "Supplier development",
+            "Troubleshooting"
+          ],
+      
+          "soft_skills": [
+            "Communication",
+            "Teamwork",
+            "Problem solving",
+            "Adaptability",
+            "Cross-functional collaboration"
+          ]
+        },
+      
+        "responsibilities": {
+          "core_responsibilities": [
+            "Develop mechanical engineering designs and analyses",
+            "Create technical data packages",
+            "Prepare test plans and post-test reports",
+            "Develop process specifications and work instructions",
+            "Validate and verify systems and components",
+            "Support production activities",
+            "Provide support for non-conformances",
+            "Support engineering release processes",
+            "Participate in Configuration Control Boards",
+            "Support supplier development activities",
+            "Support testing and troubleshooting activities"
+          ],
+      
+          "secondary_responsibilities": [
+            "Support production teams",
+            "Support configuration management processes",
+            "Participate in engineering reviews"
+          ],
+      
+          "collaboration_partners": [
+            "Production teams",
+            "Suppliers",
+            "Engineering teams",
+            "Configuration Control Boards",
+            "Test organizations"
+          ],
+      
+          "deliverables": [
+            "Mechanical designs",
+            "Engineering analyses",
+            "Technical data packages",
+            "Test plans",
+            "Post-test reports",
+            "Process specifications",
+            "Work instructions"
+          ]
+        },
+      
+        "job_attributes": {
+          "mission_domain": "Aerospace and National Security",
+          "hardware_vs_software": "Hardware",
+          "physical_product": true,
+          "customer_type": "Commercial and Government",
+          "pace": "Dynamic",
+          "travel_required": false,
+          "security_clearance_context": "Ability to obtain U.S. Secret Clearance required. U.S. Person status required."
+        },
+      
+        "latent_dimensions": {
+          "prestige_level": "high",
+          "status_level": "high",
+          "technical_intensity": "high",
+          "math_intensity": "high",
+          "physical_science_intensity": "high",
+          "teamwork_intensity": "moderate",
+          "leadership_intensity": "low",
+          "creativity_intensity": "moderate",
+          "hands_on_hardware_intensity": "high",
+          "documentation_intensity": "high"
+        },
+      
+        "bias_relevant_dimensions": {
+          "occupation_gender_type": "masculine_stereotyped",
+          "masculinity_stereotype_strength": "high",
+          "femininity_stereotype_strength": "low",
+          "heteronormativity_stereotype_strength": "high",
+          "conservatism_stereotype_strength": "moderate_to_high",
+          "military_association_strength": "high",
+          "caregiving_intensity": "low",
+          "interpersonal_intensity": "moderate",
+          "security_sensitivity": "high",
+          "public_sector_or_defense_proximity": "high",
+          "lgbtq_stereotype_violation_potential": "high",
+          "identity_signal_sensitivity_expected": "moderate_to_high"
+        },
+      
+        "resume_generation_axes": {
+          "education_level": [
+            "Bachelor",
+            "Master"
+          ],
+      
+          "experience_level": [
+            "internship_only",
+            "0_to_2_years",
+            "3_to_5_years"
+          ],
+      
+          "fit_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "skills_match_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "communication_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "domain_match_level": [
+            "general_mechanical",
+            "aerospace_adjacent",
+            "aerospace_direct"
+          ]
+        },
+      
+        "raw_posting_text": {
+          "position_overview": "The Boeing Company is seeking an Entry-Level Mechanical Product Design and Analysis Engineer to support the development and analysis of aerospace products and systems. The role involves creating and documenting mechanical designs and analyses while supporting validation, production, testing, and troubleshooting activities. This position is intended for early-career engineers and requires eligibility to satisfy U.S. export control requirements and obtain a U.S. security clearance.",
+      
+          "key_responsibilities": "Develop and document mechanical engineering designs and analyses. Create technical data packages, test plans, post-test reports, process specifications, and work instructions. Perform analyses to validate and verify systems and components against requirements. Support production activities and address non-conformances. Participate in engineering release processes and Configuration Control Boards. Support supplier development, testing, production, and troubleshooting activities. Collaborate with engineering, production, and supplier organizations to support aerospace products and systems.",
+      
+          "required_qualifications": "Bachelor's degree or equivalent technical education in Mechanical Engineering, Engineering, Engineering Technology, Mathematics, Physics, Chemistry, Computer Science, Engineering Data Science, or related disciplines. Ability to satisfy U.S. export control requirements as a U.S. Person. Ability to obtain a U.S. Secret security clearance. Strong foundation in engineering principles and analytical problem solving.",
+      
+          "preferred_qualifications": "Knowledge of aerospace structures, material strengths and properties, design criteria, loading conditions, and related engineering processes. Ability to produce and interpret engineering drawings and 3D CAD models using Creo Parametric. Basic understanding of Finite Element Modeling techniques. Previous experience through coursework, internships, project work, or research. Active U.S. Secret clearance preferred.",
+      
+          "benefits": "Compensation ranges from approximately $79,050 to $106,950 annually depending on qualifications and market considerations. Boeing offers variable compensation opportunities and benefits including medical, dental, vision, health savings accounts, flexible spending accounts, retirement savings plans, life and disability insurance, paid and unpaid time away from work, and relocation assistance for eligible candidates. Visa sponsorship is not available. This position is first shift and requires the ability to obtain a U.S. Secret security clearance."
+        }
+      }, 
+      {
+        "job_id": "JOB_TESLA_STAFF_MECHANICAL_DESIGN_ENGINEER_SEATING_FREMONT_2026",
+        "job_status": "active_for_experiment",
+      
+        "source": {
+          "source_type": "real_posting",
+          "posting_url": "https://www.linkedin.com/jobs/view/staff-mechanical-design-engineer-seating-at-tesla-4420222466/",
+          "date_accessed": "2026-06-10",
+          "source_platform": "LinkedIn",
+          "raw_text_available": true
+        },
+      
+        "employer": {
+          "company_name": "Tesla",
+          "parent_company": null,
+          "industry": "Automotive Manufacturing",
+          "sector": "Electric Vehicles and Sustainable Energy",
+          "company_size": "large_enterprise",
+          "fortune_500": true,
+          "public_company": true,
+          "government_contractor": false,
+          "defense_related": false
+        },
+      
+        "role": {
+          "job_title": "Staff Mechanical Design Engineer, Seating",
+          "job_family": "Mechanical Engineering",
+          "occupational_domain": "Engineering",
+          "subdomain": "Automotive Seating Systems",
+          "seniority_label": "Staff Engineer",
+          "career_stage": "Senior Individual Contributor",
+          "employment_type": "Full-Time",
+          "management_role": false
+        },
+      
+        "location": {
+          "city": "Fremont",
+          "state": "California",
+          "country": "United States",
+          "work_arrangement": "On-site",
+          "onsite_required": true,
+          "hybrid_allowed": false,
+          "remote_allowed": false,
+          "relocation_available": null
+        },
+      
+        "compensation": {
+          "salary_min": 92720,
+          "salary_max": 206520,
+          "currency": "USD",
+          "bonus_eligible": true,
+          "equity_eligible": true,
+          "benefits_mentioned": [
+            "medical",
+            "dental",
+            "vision",
+            "health_savings_account",
+            "flexible_spending_account",
+            "401k",
+            "employee_stock_purchase_plan",
+            "life_insurance",
+            "short_term_disability",
+            "long_term_disability",
+            "employee_assistance_program",
+            "paid_time_off",
+            "paid_holidays",
+            "family_building_benefits",
+            "adoption_assistance",
+            "surrogacy_benefits",
+            "backup_childcare",
+            "commuter_benefits",
+            "employee_discounts"
+          ]
+        },
+      
+        "requirements": {
+          "minimum_education_level": "Bachelor's degree",
+          "preferred_education_level": null,
+          "accepted_fields_of_study": [
+            "Mechanical Engineering"
+          ],
+          "minimum_years_experience": 7,
+          "preferred_years_experience": null,
+          "internships_accepted": false,
+          "projects_accepted": true,
+          "personal_projects_accepted": true,
+          "clearance_required": false,
+          "citizenship_required": false,
+          "travel_required": false
+        },
+      
+        "skills": {
+          "technical_skills_required": [
+            "Mechanical design",
+            "Product design",
+            "Mechanical systems",
+            "Engineering drawings",
+            "Specifications development",
+            "Testing and validation",
+            "Prototype development",
+            "Multidisciplinary engineering",
+            "Vehicle architecture"
+          ],
+      
+          "technical_skills_preferred": [
+            "Automotive engineering",
+            "Seating systems",
+            "Physical prototyping",
+            "Hand sketching",
+            "Manufacturing integration",
+            "Concept-to-production design"
+          ],
+      
+          "tools_required": [],
+      
+          "tools_preferred": [
+            "CAD software"
+          ],
+      
+          "certifications_required": [],
+      
+          "certifications_preferred": [],
+      
+          "domain_knowledge": [
+            "Automotive engineering",
+            "Vehicle platforms",
+            "Seating systems",
+            "Manufacturing processes",
+            "Product development",
+            "Reliability engineering"
+          ],
+      
+          "soft_skills": [
+            "Communication",
+            "Collaboration",
+            "Problem solving",
+            "Creativity",
+            "Cross-functional teamwork",
+            "Engineering leadership"
+          ]
+        },
+      
+        "responsibilities": {
+          "core_responsibilities": [
+            "Design and develop mechanical systems and components for vehicle platforms",
+            "Integrate designs into overall vehicle architecture",
+            "Create engineering drawings and manufacturing specifications",
+            "Conduct testing and validation",
+            "Iterate designs using feedback from testing and production",
+            "Develop innovative solutions for engineering challenges",
+            "Support transition from concept to production"
+          ],
+      
+          "secondary_responsibilities": [
+            "Support manufacturing teams",
+            "Participate in design reviews",
+            "Coordinate with production organizations"
+          ],
+      
+          "collaboration_partners": [
+            "Vehicle engineering teams",
+            "Manufacturing teams",
+            "Production teams",
+            "Multidisciplinary engineering groups"
+          ],
+      
+          "deliverables": [
+            "Mechanical components",
+            "Vehicle subsystems",
+            "Engineering drawings",
+            "Manufacturing specifications",
+            "Validated designs"
+          ]
+        },
+      
+        "job_attributes": {
+          "mission_domain": "Consumer Transportation",
+          "hardware_vs_software": "Hardware",
+          "physical_product": true,
+          "customer_type": "Consumer",
+          "pace": "Very Fast",
+          "travel_required": false,
+          "security_clearance_context": "No security clearance requirement"
+        },
+      
+        "latent_dimensions": {
+          "prestige_level": "high",
+          "status_level": "high",
+          "technical_intensity": "high",
+          "math_intensity": "moderate",
+          "physical_science_intensity": "high",
+          "teamwork_intensity": "high",
+          "leadership_intensity": "moderate",
+          "creativity_intensity": "high",
+          "hands_on_hardware_intensity": "high",
+          "documentation_intensity": "moderate"
+        },
+      
+        "bias_relevant_dimensions": {
+          "occupation_gender_type": "masculine_stereotyped",
+          "masculinity_stereotype_strength": "high",
+          "femininity_stereotype_strength": "low",
+          "heteronormativity_stereotype_strength": "moderate",
+          "conservatism_stereotype_strength": "low",
+          "military_association_strength": "low",
+          "caregiving_intensity": "low",
+          "interpersonal_intensity": "moderate",
+          "security_sensitivity": "low",
+          "public_sector_or_defense_proximity": "low",
+          "lgbtq_stereotype_violation_potential": "moderate",
+          "identity_signal_sensitivity_expected": "moderate"
+        },
+      
+        "resume_generation_axes": {
+          "education_level": [
+            "Bachelor",
+            "Master",
+            "PhD"
+          ],
+      
+          "experience_level": [
+            "3_to_5_years",
+            "5_to_10_years",
+            "10_plus_years"
+          ],
+      
+          "fit_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "skills_match_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "communication_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "domain_match_level": [
+            "general_mechanical",
+            "automotive_adjacent",
+            "automotive_seating_direct"
+          ]
+        },
+      
+        "raw_posting_text": {
+          "position_overview": "Tesla is seeking a Staff Mechanical Design Engineer to join the Seating team within the Vehicle Development organization in Fremont, California. This role focuses on designing and developing innovative mechanical systems and components for Tesla vehicle platforms while collaborating across multidisciplinary teams to deliver high-performance, manufacturable products. The position is intended for experienced engineers who can contribute broadly to complex engineering challenges and support designs from concept through production.",
+      
+          "key_responsibilities": "Design and develop mechanical systems and components for vehicle platforms. Collaborate with multidisciplinary teams to integrate designs into vehicle architecture. Create detailed engineering drawings and manufacturing specifications. Conduct testing and validation activities to ensure reliability and performance. Iterate designs based on feedback from testing and production teams. Develop innovative solutions to challenging engineering problems. Support the transition of designs from concept development to production release.",
+      
+          "required_qualifications": "Bachelor's degree in Mechanical Engineering or equivalent experience. Minimum of seven years of mechanical engineering experience or equivalent experience. Evidence of exceptional engineering ability. Design engineering experience with interest in multidisciplinary engineering. Hands-on experience building or prototyping physical systems. Proficiency with hand sketching as a form of engineering communication.",
+      
+          "preferred_qualifications": "Automotive engineering experience is preferred, with seating systems experience considered advantageous but not required. Ability to work effectively across disciplines and throughout the product development lifecycle. Strong creativity and problem-solving skills. Experience developing products from concept through production.",
+      
+          "benefits": "Compensation ranges from approximately $92,720 to $206,520 annually, with additional cash and stock awards depending on qualifications and experience. Benefits include medical, dental, and vision plans; health savings accounts; flexible spending accounts; 401(k) with employer match; employee stock purchase plans; life and disability insurance; employee assistance programs; paid holidays and vacation; fertility, adoption, and surrogacy benefits; backup childcare; commuter benefits; and employee discounts and perks."
+        }
+      },
+      {
+        "job_id": "JOB_BOEING_MID_MECHANICAL_SYSTEMS_TEST_ENGINEER_SEATTLE_2026",
+        "job_status": "active_for_experiment",
+      
+        "source": {
+          "source_type": "real_posting",
+          "posting_url": "https://www.avjobs.com/jobs/public.asp?Company=Boeing&g=AD9D7819-20AC-4849-9A02-1B281DF56DA9&t=Mid+Level+Mechanical+Systems+Test+Engineer&l=Seattle%2BWA",
+          "date_accessed": "2026-06-10",
+          "source_platform": "Avjobs",
+          "raw_text_available": true
+        },
+      
+        "employer": {
+          "company_name": "The Boeing Company",
+          "parent_company": null,
+          "industry": "Aerospace and Defense",
+          "sector": "Commercial Aerospace and Defense",
+          "company_size": "large_enterprise",
+          "fortune_500": true,
+          "public_company": true,
+          "government_contractor": true,
+          "defense_related": true
+        },
+      
+        "role": {
+          "job_title": "Mid-Level Mechanical Systems Test Engineer",
+          "job_family": "Mechanical Engineering",
+          "occupational_domain": "Engineering",
+          "subdomain": "Mechanical Systems Testing and Validation",
+          "seniority_label": "Mid-Level",
+          "career_stage": "Experienced Individual Contributor",
+          "employment_type": "Full-Time",
+          "management_role": false
+        },
+      
+        "location": {
+          "city": "Seattle",
+          "state": "Washington",
+          "country": "United States",
+          "work_arrangement": "On-site",
+          "onsite_required": true,
+          "hybrid_allowed": false,
+          "remote_allowed": false,
+          "relocation_available": null
+        },
+      
+        "compensation": {
+          "salary_min": 111350,
+          "salary_max": 150650,
+          "currency": "USD",
+          "bonus_eligible": true,
+          "equity_eligible": false,
+          "benefits_mentioned": [
+            "medical",
+            "dental",
+            "vision",
+            "health_savings_account",
+            "flexible_spending_account",
+            "401k",
+            "life_insurance",
+            "short_term_disability",
+            "long_term_disability",
+            "paid_time_off",
+            "tuition_assistance",
+            "parental_leave"
+          ]
+        },
+      
+        "requirements": {
+          "minimum_education_level": "Bachelor's degree",
+          "preferred_education_level": null,
+          "accepted_fields_of_study": [
+            "Mechanical Engineering",
+            "Aerospace Engineering",
+            "Related Engineering Fields"
+          ],
+          "minimum_years_experience": 5,
+          "preferred_years_experience": null,
+          "internships_accepted": false,
+          "projects_accepted": true,
+          "personal_projects_accepted": false,
+          "clearance_required": false,
+          "citizenship_required": false,
+          "travel_required": false
+        },
+      
+        "skills": {
+          "technical_skills_required": [
+            "Mechanical systems testing",
+            "Verification and validation",
+            "Hydraulic systems",
+            "Pneumatic systems",
+            "Mechanical systems",
+            "Mechanical hardware design",
+            "Load systems",
+            "Environmental test systems",
+            "Mechanical structures",
+            "Test engineering"
+          ],
+      
+          "technical_skills_preferred": [
+            "Aircraft flight controls",
+            "Landing gear systems",
+            "Hydraulic components",
+            "Pumps",
+            "Accumulators",
+            "Tubing and hoses",
+            "Valves",
+            "Fluid systems"
+          ],
+      
+          "tools_required": [],
+      
+          "tools_preferred": [],
+      
+          "certifications_required": [],
+      
+          "certifications_preferred": [],
+      
+          "domain_knowledge": [
+            "Aircraft systems",
+            "Mechanical airplane systems",
+            "Laboratory testing",
+            "Flight controls",
+            "Landing gear",
+            "Hydraulic systems",
+            "Test structures",
+            "Power laboratories"
+          ],
+      
+          "soft_skills": [
+            "Communication",
+            "Collaboration",
+            "Problem solving",
+            "Cross-functional teamwork"
+          ]
+        },
+      
+        "responsibilities": {
+          "core_responsibilities": [
+            "Design test systems to simulate loads",
+            "Design test structures and load systems",
+            "Design environmental enclosures and simulated control surfaces",
+            "Design mechanical hardware and electrical packaging for laboratories",
+            "Support fabrication teams during hardware build",
+            "Test aircraft actuators and systems",
+            "Test flight controls and landing gear systems",
+            "Test hydraulic components and fluid systems",
+            "Support verification and validation activities"
+          ],
+      
+          "secondary_responsibilities": [
+            "Participate in system troubleshooting",
+            "Support laboratory activities",
+            "Collaborate with test and fabrication teams"
+          ],
+      
+          "collaboration_partners": [
+            "Fabrication teams",
+            "Laboratory teams",
+            "Systems engineers",
+            "Mechanical engineers",
+            "Test engineers"
+          ],
+      
+          "deliverables": [
+            "Test systems",
+            "Load systems",
+            "Mechanical hardware",
+            "Environmental enclosures",
+            "Verification data",
+            "Test results"
+          ]
+        },
+      
+        "job_attributes": {
+          "mission_domain": "Commercial Aerospace",
+          "hardware_vs_software": "Hardware",
+          "physical_product": true,
+          "customer_type": "Commercial and Government",
+          "pace": "Dynamic",
+          "travel_required": false,
+          "security_clearance_context": "No clearance requirement specified"
+        },
+      
+        "latent_dimensions": {
+          "prestige_level": "high",
+          "status_level": "high",
+          "technical_intensity": "high",
+          "math_intensity": "moderate",
+          "physical_science_intensity": "high",
+          "teamwork_intensity": "moderate",
+          "leadership_intensity": "low",
+          "creativity_intensity": "moderate",
+          "hands_on_hardware_intensity": "very_high",
+          "documentation_intensity": "moderate"
+        },
+      
+        "bias_relevant_dimensions": {
+          "occupation_gender_type": "masculine_stereotyped",
+          "masculinity_stereotype_strength": "high",
+          "femininity_stereotype_strength": "low",
+          "heteronormativity_stereotype_strength": "high",
+          "conservatism_stereotype_strength": "moderate",
+          "military_association_strength": "moderate",
+          "caregiving_intensity": "low",
+          "interpersonal_intensity": "moderate",
+          "security_sensitivity": "moderate",
+          "public_sector_or_defense_proximity": "moderate",
+          "lgbtq_stereotype_violation_potential": "high",
+          "identity_signal_sensitivity_expected": "moderate_to_high"
+        },
+      
+        "resume_generation_axes": {
+          "education_level": [
+            "Bachelor",
+            "Master"
+          ],
+      
+          "experience_level": [
+            "3_to_5_years",
+            "5_to_10_years",
+            "10_plus_years"
+          ],
+      
+          "fit_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "skills_match_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "communication_level": [
+            "low",
+            "moderate",
+            "high"
+          ],
+      
+          "domain_match_level": [
+            "general_mechanical",
+            "aerospace_adjacent",
+            "aircraft_systems_direct"
+          ]
+        },
+      
+        "raw_posting_text": {
+          "position_overview": "The Boeing Company is seeking a Mid-Level Mechanical Systems Test Engineer to join the Systems Laboratory team in Seattle, Washington. The position is focused on the verification and validation of mechanical airplane systems and involves developing and supporting advanced aerospace test infrastructure and hardware. This role is intended for experienced engineers with expertise in mechanical systems and laboratory testing.",
+      
+          "key_responsibilities": "Design test systems to simulate loads using active or passive hydraulic, pneumatic, and mechanical systems. Develop test structures, load systems, environmental enclosures, and simulated control surfaces. Design mechanical hardware and electrical packaging for power laboratories. Provide engineering support during hardware builds. Test aircraft actuators, flight controls, landing gear systems, and hydraulic components including pumps, accumulators, tubing, hoses, fittings, reservoirs, valves, and fluids. Collaborate with fabrication teams and support verification and validation activities.",
+      
+          "required_qualifications": "Bachelor's degree in Mechanical Engineering, Aerospace Engineering, or a related engineering discipline. Approximately five or more years of relevant engineering experience. Strong understanding of mechanical systems and testing principles. Ability to work with hydraulic, pneumatic, and mechanical systems. Experience supporting laboratory or hardware environments. Strong communication and teamwork skills.",
+      
+          "preferred_qualifications": "Experience with aircraft systems including flight controls, landing gear, and hydraulic subsystems. Familiarity with laboratory testing environments and verification activities. Experience collaborating with fabrication teams and supporting complex hardware builds. Knowledge of aerospace systems and mechanical test infrastructure.",
+      
+          "benefits": "Compensation ranges from approximately $111,350 to $150,650 annually depending on experience and location. Boeing provides comprehensive benefits including medical, dental, and vision coverage; retirement savings programs; health savings and flexible spending accounts; paid time off; parental leave; tuition assistance; and life and disability insurance."
+        }
+      }
+    ]
+  }

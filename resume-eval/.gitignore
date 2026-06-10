@@ -12,3 +12,7 @@ results/
 
 __pycache__/
 *.pyc
+
+# new_schemas benchmark run outputs (regenerable from configs)
+new_schemas/runs/
+__pycache__/

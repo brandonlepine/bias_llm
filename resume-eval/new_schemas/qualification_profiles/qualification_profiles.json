@@ -1,0 +1,124 @@
+{
+  "schema_version": "0.1.0",
+  "description": "Multidimensional, independently-controllable candidate-quality profiles. Quality is NOT encoded in resume_backbones (which hold raw materials only); a profile selects WHICH materials and HOW MANY. Each profile must be compatible with a job's resume_generation_axes (experience_level/domain_match_level) before it is used with that job.",
+  "dimension_levels": ["low", "moderate", "high"],
+  "selection_semantics": {
+    "school_prestige_tier": "1 = most selective; generator maps tier -> prestige-ordered education_pool index",
+    "domain_proximity": "direct|adjacent|general -> generator maps to the job-appropriate backbone experience_pool",
+    "years_experience_band": "internship_only|0_to_2_years|3_to_5_years|5_to_10_years|10_plus_years -> number of roles + dating",
+    "skills_overlap": "fraction of the job's required+preferred skills surfaced in the SKILLS section",
+    "project_relevance": "none|some|strong -> number/relevance of PROJECTS bullets",
+    "communication_evidence": "low|moderate|high -> presence of presentation/writing/cross-functional language",
+    "leadership_evidence": "low|moderate|high -> presence of lead/mentor/ownership language"
+  },
+  "qualification_profiles": [
+    {
+      "qualification_profile_id": "QP_STRONG_ALIGNED_ENTRY",
+      "label": "strong, well-aligned early-career",
+      "compatible_experience_levels": ["0_to_2_years", "3_to_5_years"],
+      "dimensions": {
+        "education_quality": "high", "experience_quality": "high", "domain_fit": "high",
+        "skills_match": "high", "communication_strength": "high",
+        "project_strength": "high", "leadership_strength": "moderate",
+        "overall_candidate_strength": "high"
+      },
+      "concrete": {
+        "degree_level": "Bachelor", "school_prestige_tier": 1, "gpa_band": "3.8",
+        "years_experience_band": "3_to_5_years", "prior_employer_prestige_tier": 1,
+        "domain_proximity": "direct", "skills_overlap": "high",
+        "project_relevance": "strong", "communication_evidence": "high",
+        "leadership_evidence": "moderate"
+      }
+    },
+    {
+      "qualification_profile_id": "QP_WEAK_MISALIGNED_ENTRY",
+      "label": "weak, poorly-aligned early-career",
+      "compatible_experience_levels": ["internship_only", "0_to_2_years"],
+      "dimensions": {
+        "education_quality": "low", "experience_quality": "low", "domain_fit": "low",
+        "skills_match": "low", "communication_strength": "low",
+        "project_strength": "low", "leadership_strength": "low",
+        "overall_candidate_strength": "low"
+      },
+      "concrete": {
+        "degree_level": "Bachelor", "school_prestige_tier": 3, "gpa_band": "3.4",
+        "years_experience_band": "internship_only", "prior_employer_prestige_tier": 3,
+        "domain_proximity": "general", "skills_overlap": "low",
+        "project_relevance": "some", "communication_evidence": "low",
+        "leadership_evidence": "low"
+      }
+    },
+    {
+      "qualification_profile_id": "QP_MODERATE_ENTRY",
+      "label": "moderate across the board",
+      "compatible_experience_levels": ["0_to_2_years", "3_to_5_years"],
+      "dimensions": {
+        "education_quality": "moderate", "experience_quality": "moderate", "domain_fit": "moderate",
+        "skills_match": "moderate", "communication_strength": "moderate",
+        "project_strength": "moderate", "leadership_strength": "moderate",
+        "overall_candidate_strength": "moderate"
+      },
+      "concrete": {
+        "degree_level": "Bachelor", "school_prestige_tier": 2, "gpa_band": "3.6",
+        "years_experience_band": "0_to_2_years", "prior_employer_prestige_tier": 2,
+        "domain_proximity": "adjacent", "skills_overlap": "moderate",
+        "project_relevance": "some", "communication_evidence": "moderate",
+        "leadership_evidence": "moderate"
+      }
+    },
+    {
+      "qualification_profile_id": "QP_HIGH_EDU_LOW_EXP",
+      "label": "mixed: strong education, thin experience",
+      "compatible_experience_levels": ["internship_only", "0_to_2_years"],
+      "dimensions": {
+        "education_quality": "high", "experience_quality": "low", "domain_fit": "moderate",
+        "skills_match": "moderate", "communication_strength": "moderate",
+        "project_strength": "high", "leadership_strength": "low",
+        "overall_candidate_strength": "moderate"
+      },
+      "concrete": {
+        "degree_level": "Master", "school_prestige_tier": 1, "gpa_band": "3.8",
+        "years_experience_band": "internship_only", "prior_employer_prestige_tier": 2,
+        "domain_proximity": "adjacent", "skills_overlap": "moderate",
+        "project_relevance": "strong", "communication_evidence": "moderate",
+        "leadership_evidence": "low"
+      }
+    },
+    {
+      "qualification_profile_id": "QP_LOW_EDU_HIGH_DOMAIN",
+      "label": "mixed: modest education, strong domain-direct experience",
+      "compatible_experience_levels": ["3_to_5_years"],
+      "dimensions": {
+        "education_quality": "low", "experience_quality": "high", "domain_fit": "high",
+        "skills_match": "high", "communication_strength": "moderate",
+        "project_strength": "moderate", "leadership_strength": "moderate",
+        "overall_candidate_strength": "high"
+      },
+      "concrete": {
+        "degree_level": "Bachelor", "school_prestige_tier": 3, "gpa_band": "3.4",
+        "years_experience_band": "3_to_5_years", "prior_employer_prestige_tier": 1,
+        "domain_proximity": "direct", "skills_overlap": "high",
+        "project_relevance": "some", "communication_evidence": "moderate",
+        "leadership_evidence": "moderate"
+      }
+    },
+    {
+      "qualification_profile_id": "QP_HIGH_SKILLS_LOW_LEADERSHIP",
+      "label": "mixed: strong technical skills, little leadership signal",
+      "compatible_experience_levels": ["0_to_2_years", "3_to_5_years"],
+      "dimensions": {
+        "education_quality": "moderate", "experience_quality": "moderate", "domain_fit": "high",
+        "skills_match": "high", "communication_strength": "low",
+        "project_strength": "high", "leadership_strength": "low",
+        "overall_candidate_strength": "moderate"
+      },
+      "concrete": {
+        "degree_level": "Bachelor", "school_prestige_tier": 2, "gpa_band": "3.6",
+        "years_experience_band": "0_to_2_years", "prior_employer_prestige_tier": 2,
+        "domain_proximity": "direct", "skills_overlap": "high",
+        "project_relevance": "strong", "communication_evidence": "low",
+        "leadership_evidence": "low"
+      }
+    }
+  ]
+}
