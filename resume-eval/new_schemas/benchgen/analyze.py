@@ -172,7 +172,8 @@ def pairwise_figure(rows, fig_dir):
         ax.set_xticks(range(len(conds)))
         ax.set_xticklabels([c.replace("load", "L") for c in conds], rotation=30, ha="right", fontsize=8)
         ax.set_xlabel("identity condition", fontsize=9)
-        ax.legend(fontsize=7, loc="best")
+        if ax.get_legend_handles_labels()[0]:
+            ax.legend(fontsize=7, loc="best")
     fig.subplots_adjust(left=0.07, right=0.98, top=0.84, bottom=0.22, wspace=0.28)  # NOT tight_layout
     path = os.path.join(fig_dir, "pairwise_choice.png")
     fig.savefig(path, dpi=130)
