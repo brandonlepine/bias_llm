@@ -26,6 +26,12 @@ import json
 import os
 import random
 
+try:
+    from tqdm import tqdm
+except Exception:
+    def tqdm(it, **k):
+        return it
+
 from . import loaders, render
 
 try:
@@ -107,6 +113,8 @@ def main():
 
     base_seed = cfg.get("seed", 0)
     rows, skipped = [], []
+    n_resume = 0
+    print("rendering resumes + token diagnostics ...", flush=True)
     for job_id in cfg["jobs"]:
         job = jobs[job_id]
         system, context = job_system_prompt(job), job_context_text(job)
@@ -126,6 +134,9 @@ def main():
                         paired_id = f"{job_id}|{bk_id}|{qp_id}|{ic['identity_signal_condition_id']}|{nv_id}"
                         grad = render.grad_year(qp)
                         for arm in arms:
+                            n_resume += 1
+                            if n_resume % 100 == 0:
+                                print(f"  rendered {n_resume} resumes", flush=True)
                             rng = random.Random(f"{base_seed}|{paired_id}")  # base identical across arms
                             secs, diag = render.identity_sections(job, ic["channels"], arm, by_channel,
                                                                   grad, description_mode, render_mode)

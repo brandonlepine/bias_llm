@@ -24,6 +24,12 @@ import math
 import os
 import collections
 
+try:
+    from tqdm import tqdm
+except Exception:
+    def tqdm(it, **k):
+        return it
+
 from . import loaders
 from pilot.run_eval_prompts import pick_device_dtype, single_token_ids
 from pilot.modelref import default_model, dtype_kwargs
@@ -120,8 +126,14 @@ def main():
     nmass, n_done, parse_fail = [], 0, 0
     pairwise_groups = collections.defaultdict(dict)  # built from single-resume rows below
 
+    n_single = sum(1 for r in rows if r.get('output_type') != 'pairwise_AB')
+    n_pairs_est = len({r["paired_example_id"] for r in rows
+                       if r.get("treatment_or_control") == "treatment"}) if want_pairwise else 0
+    print(f"scoring {n_single} single-resume rows"
+          + (f" + ~{n_pairs_est} pairwise pairs (x2 orders)" if want_pairwise else "")
+          + " ...", flush=True)
     with open(out_path, "w") as outf:
-        for ex in rows:
+        for ex in tqdm(rows, desc="scoring resumes", unit="row"):
             ot = ex["output_type"]
             if ot == "pairwise_AB":
                 continue  # generator does not emit these; pairwise is constructed below
@@ -158,9 +170,12 @@ def main():
             else:
                 parse_fail += 1; rec.update(parse_success=False, error="unknown output_type")
             outf.write(json.dumps(rec) + "\n"); n_done += 1
+            if n_done % 25 == 0:
+                outf.flush()
 
         # pairwise: treatment vs matched control, both orders (constructed from paired groups)
-        for pid, arms in (pairwise_groups.items() if want_pairwise else []):
+        for pid, arms in tqdm(list(pairwise_groups.items()) if want_pairwise else [],
+                               desc="pairwise A/B", unit="pair"):
             if "treatment" not in arms or "control" not in arms:
                 continue
             t, c = arms["treatment"], arms["control"]
