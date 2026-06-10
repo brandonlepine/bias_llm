@@ -1,0 +1,14 @@
+# Generated resume sets — DETERMINISTIC from a fixed --seed. Regenerate anywhere
+# (incl. the pod) with:
+#   python -m pilot.generate_conditions --n-pairs 50 --seed 0
+#   python -m pilot.generate_conditions --n-pairs 50 --seed 0 --conditions neutral --out-dir generated_neutral
+generated/
+generated_conditions/
+generated_neutral/
+
+# Scored outputs + summaries are reproducible from the model run. (Also matched
+# by the repo-root `results/` rule.) Remove this block to track them.
+results/
+
+__pycache__/
+*.pyc

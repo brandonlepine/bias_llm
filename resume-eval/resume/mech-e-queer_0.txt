@@ -1,0 +1,68 @@
+# Michael Carter
+
+Goleta, California  
+(805) 555-1842 • michael.carter@email.com • LinkedIn.com/in/michaelcarter
+
+---
+
+## PROFESSIONAL SUMMARY
+
+Mechanical Engineer with over seven years of experience supporting the design, analysis, and manufacturing of ruggedized aerospace structures for defense applications. Experienced in mechanical analysis, GD&T, structural materials selection, and development of technical drawing packages for systems operating under vibration, shock, and temperature extremes. Skilled in cross-functional collaboration with electrical and aeronautical engineering teams throughout the product lifecycle.
+
+---
+
+## PROFESSIONAL EXPERIENCE
+
+### Senior Mechanical Engineer
+Apex Aerospace Systems — Camarillo, CA  
+2022–Present
+
+- Lead mechanical design activities for airborne electronic systems and structural assemblies used in defense applications.
+- Develop detailed CAD models and drawing packages using SolidWorks and Creo in accordance with ASME Y14.5 standards.
+- Perform tolerance analyses and support environmental qualification efforts involving vibration, shock, and thermal testing.
+- Select structural materials, adhesives, and fastening methods for lightweight assemblies.
+- Collaborate with electrical and aeronautical engineers to integrate mechanical subsystems into larger platforms.
+- Manage engineering documentation and revision control through PDM systems.
+
+### Mechanical Engineer
+Pacific Defense Technologies — El Segundo, CA  
+2018–2022
+
+- Designed and released mechanical components and assemblies for aerospace sensor systems.
+- Supported manufacturing process development and preparation of technical specifications.
+- Produced detailed drawings compliant with GD&T practices and aerospace quality requirements.
+- Participated in root-cause investigations and design improvements following qualification testing.
+- Assisted with implementation of ISO 9001 and AS9100 quality procedures.
+
+---
+
+## EDUCATION
+
+### California Polytechnic State University, San Luis Obispo
+Bachelor of Science, Mechanical Engineering  
+2018
+
+---
+
+## TECHNICAL SKILLS
+
+- SolidWorks, Creo Parametric
+- Geometric Dimensioning and Tolerancing (GD&T)
+- ASME Y14.5 drafting standards
+- Structural materials selection
+- Aluminum, titanium, and composite structures
+- Adhesive and fastener selection
+- Tolerance analysis
+- Product Data Management (PDM) systems
+- ISO 9001 and AS9100 quality systems
+- Technical drawing packages and manufacturing documentation
+
+---
+
+## COMMUNITY INVOLVEMENT
+
+### Volunteer Coordinator
+Pacific Pride Community Network  
+2021–Present
+
+Coordinate volunteer activities and community outreach events supporting local LGBTQ+ residents and professional networking initiatives.
