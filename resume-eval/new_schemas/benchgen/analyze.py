@@ -29,6 +29,7 @@ import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
 from pilot.analyze import stats_block  # reuse validated bootstrap/dz/CI
 
@@ -139,47 +140,40 @@ def figure_for_condition(pc, recs, units, fig_dir):
 
 
 def pairwise_figure(rows, fig_dir):
+    """Position-DEBIASED pairwise preference. The raw A/B logit is saturated by a
+    position-A primacy bias (the model nearly always picks A), so the discrete choice
+    is uninformative; the identity preference is T = (logit_AB|treat=A - logit_AB|treat=B)/2,
+    which differences out the constant position bias. + = treatment (LGBTQ) favored."""
     pw = [r for r in rows if r.get("output_type") == "pairwise_AB"]
     if not pw:
         return None
-    by_cond = collections.defaultdict(lambda: {"t": 0, "n": 0, "a_t": 0, "a_n": 0, "a_c": 0, "c_n": 0})
+    frac_A = sum(r["chosen_candidate"] == "A" for r in pw) / len(pw)
+    g = collections.defaultdict(dict); cond = {}
     for r in pw:
-        cond = r["identity_signal_condition_id"]
-        b = by_cond[cond]
-        chose_t = (r.get("chosen_variant") == "treatment")
-        b["t"] += chose_t; b["n"] += 1
-        if r.get("candidate_a_variant_type") == "treatment":
-            b["a_t"] += chose_t; b["a_n"] += 1            # treatment in position A
-        else:
-            b["a_c"] += chose_t; b["c_n"] += 1            # treatment in position B
-    conds = sorted(by_cond)
-    p_treat = [by_cond[c]["t"] / by_cond[c]["n"] for c in conds]
-    # order effect: P(treat | treat=A) - P(treat | treat=B)
-    order_eff = [(by_cond[c]["a_t"] / max(by_cond[c]["a_n"], 1)) -
-                 (by_cond[c]["a_c"] / max(by_cond[c]["c_n"], 1)) for c in conds]
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.6))
-    fig.suptitle("Pairwise candidate choice (treatment vs matched control, both orders)", fontsize=11)
-    ax1.bar(range(len(conds)), p_treat, color="#1f77b4", edgecolor="black", zorder=3)
-    ax1.axhline(0.5, color="red", linestyle="--", linewidth=1, label="no preference (0.5)", zorder=2)
-    ax1.set_title("P(treatment chosen)", fontsize=10)
-    ax1.set_ylabel("fraction of pairs choosing the identity candidate", fontsize=9)
-    ax1.set_ylim(0, 1)
-    ax2.bar(range(len(conds)), order_eff, color="#ff7f0e", edgecolor="black", zorder=3)
-    ax2.axhline(0, color="black", linewidth=0.8)
-    ax2.set_title("Order effect: P(treat | A) − P(treat | B)\n(≠0 ⇒ position bias)", fontsize=10)
-    ax2.set_ylabel("position-A advantage", fontsize=9)
-    for ax in (ax1, ax2):
-        ax.set_xticks(range(len(conds)))
-        ax.set_xticklabels([c.replace("load", "L") for c in conds], rotation=30, ha="right", fontsize=8)
-        ax.set_xlabel("identity condition", fontsize=9)
-        if ax.get_legend_handles_labels()[0]:
-            ax.legend(fontsize=7, loc="best")
-    fig.subplots_adjust(left=0.07, right=0.98, top=0.84, bottom=0.22, wspace=0.28)  # NOT tight_layout
+        g[r["paired_example_id"]][r["candidate_a_variant_type"]] = r["logit_A_minus_logit_B"]
+        cond[r["paired_example_id"]] = r["identity_signal_condition_id"]
+    byc = collections.defaultdict(list)
+    for pid, d in g.items():
+        if "treatment" in d and "control" in d:
+            byc[cond[pid]].append((d["treatment"] - d["control"]) / 2)
+    conds = sorted(byc)
+    means = [float(np.mean(byc[c])) for c in conds]
+    err = [1.96 * float(np.std(byc[c], ddof=1)) / np.sqrt(len(byc[c])) for c in conds]
+    fig, ax = plt.subplots(figsize=(9.5, 4.8))
+    fig.suptitle("Pairwise: position-DEBIASED treatment preference  (+ = LGBTQ candidate favored head-to-head)\n"
+                 f"[raw A/B choice is {frac_A:.0%} position-A -> discrete choice uninformative; using logit debiasing]",
+                 fontsize=10)
+    x = range(len(conds))
+    ax.bar(x, means, yerr=err, color=["#2ca02c" if m > 0 else "#d62728" for m in means],
+           edgecolor="black", capsize=3, zorder=3)
+    ax.axhline(0, color="black", linewidth=0.9, label="no preference (0)", zorder=2)
+    ax.set_xticks(list(x)); ax.set_xticklabels([c.replace("load", "L") for c in conds], rotation=30, ha="right", fontsize=8)
+    ax.set_ylabel("debiased preference T (logit; + favors treatment)", fontsize=9)
+    ax.set_xlabel("identity condition", fontsize=9); ax.legend(fontsize=8, loc="best")
+    fig.subplots_adjust(left=0.10, right=0.97, top=0.82, bottom=0.26)  # NOT tight_layout
     path = os.path.join(fig_dir, "pairwise_choice.png")
-    fig.savefig(path, dpi=130)
-    plt.close(fig)
+    fig.savefig(path, dpi=130); plt.close(fig)
     return path
-
 
 def summary_heatmap(per_cond, fig_dir):
     """Heatmap of effect in FLOOR UNITS (mean Δ / floor) — comparable across DVs."""
