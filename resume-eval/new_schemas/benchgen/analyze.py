@@ -35,7 +35,9 @@ from pilot.analyze import stats_block  # reuse validated bootstrap/dz/CI
 
 
 def dv(row):
-    """Single-resume dependent variable (parsed_score covers score/salary/bonus/binary)."""
+    # salary/bonus bias is on the REALISTIC $5k-increment offer (modal), not the interpolated EV
+    if row.get("output_type") in ("salary_increment", "bonus_increment"):
+        return row.get("modal_offer_usd")
     return row.get("parsed_score")
 
 
