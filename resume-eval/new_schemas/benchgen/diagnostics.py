@@ -68,6 +68,12 @@ def main():
     args = ap.parse_args()
     run_dir = os.path.dirname(os.path.abspath(args.scored))
     df, pw = load_deltas(args.scored)
+    band_w = {}                       # outcome -> band width (for % reframing of $ deltas)
+    for line in open(args.scored):
+        import json as _j
+        r = _j.loads(line)
+        if r.get("band_high") is not None and r.get("band_low") is not None and r.get("prompt_condition_id") not in band_w:
+            band_w[r["prompt_condition_id"]] = r["band_high"] - r["band_low"]
 
     print("="*70, "\n1. COMPOSITION + SAMPLE SIZES\n", "="*70, sep="")
     comp = df.drop_duplicates("identity_condition").set_index("identity_condition")
@@ -158,8 +164,10 @@ def main():
         ci = (np.percentile(boot, 2.5), np.percentile(boot, 97.5))
         cn = d["delta_neutral"].dropna().values.astype(float)
         floor = np.percentile(np.abs([rng.choice(cn, len(cn)).mean() for _ in range(2000)]), 97.5) if len(cn) else float("nan")
+        bw = band_w.get(pc)
+        pct = f"  (= {100*x.mean()/bw:+.2f}% of band)" if bw else ""
         print(f"  {pc:<26} meanΔ={x.mean():+10.3f} 95%CI=[{ci[0]:+.3f},{ci[1]:+.3f}] se={x.std(ddof=1)/np.sqrt(len(x)):.3f} "
-              f"floor=±{floor:.3f} | favor_control={ (x>0).mean():.2f} favor_treatment={(x<0).mean():.2f}")
+              f"floor=±{floor:.3f}{pct} | favor_control={ (x>0).mean():.2f} favor_treatment={(x<0).mean():.2f}")
 
     varying = [f for f in ["salience", "explicitness", "location", "qual", "job", "cand_rel"] if df[f].nunique() > 1]
     if varying:

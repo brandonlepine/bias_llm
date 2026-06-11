@@ -157,7 +157,13 @@ def main():
                 else:
                     lo, hi = 0, int(round(comp["salary_max"] * 0.15))
                 usd = lo + (ev / 100.0) * (hi - lo)
-                rec.update(parsed_score=usd, usd=usd, ev_0_100=ev, band_low=lo, band_high=hi,
+                modal = lo + (am / 100.0) * (hi - lo)         # the model's MOST-LIKELY offer
+                incr = 5000 if ot == "salary_usd" else 1000   # realistic rounding increment
+                modal_offer = int(round(modal / incr)) * incr
+                band_width = hi - lo
+                rec.update(parsed_score=usd, usd=round(usd), ev_0_100=ev, band_pct=ev,
+                           modal_offer_usd=modal_offer, increment=incr,
+                           band_low=lo, band_high=hi, band_width=band_width,
                            number_mass=mass, parse_success=bool(mass > 0.5))
                 if ot == "bonus_usd":
                     rec["percent_of_salary"] = usd / max(comp["salary_max"], 1)
