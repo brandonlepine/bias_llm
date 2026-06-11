@@ -103,9 +103,12 @@ def main():
         d = df[df.prompt_condition == pc].copy()
         if d.empty: continue
         active = [c for c in CHANNELS if d[c].sum() > 0]   # presentation absent in pilot_v2
-        cols = ["intercept"] + active + [f"{a}:{b}" for a, b in inter if a in active and b in active]
+        # NO intercept: the paired delta is 0 at the 'none' cell (absent from the data),
+        # so an intercept would be aliased -> 8 params over 7 identity cells. Without it,
+        # the orthogonal 2^k factorial is full rank and main effects + interactions are identified.
+        cols = list(active) + [f"{a}:{b}" for a, b in inter if a in active and b in active]
         if all(c in active for c in triple): cols.append("affiliation:conference:scholarship")
-        Xd = {"intercept": np.ones(len(d))}
+        Xd = {}
         for c in active: Xd[c] = d[c].values.astype(float)
         for a, b in inter:
             if a in active and b in active: Xd[f"{a}:{b}"] = (d[a]*d[b]).values.astype(float)
