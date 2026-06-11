@@ -44,7 +44,8 @@ def load_deltas(scored):
                "identity_condition": c["identity_signal_condition_id"], "identity_load": c["identity_load"],
                "qual": c["qualification_profile_id"], "job": c["job_id"], "gender": c.get("perceived_gender"),
                "salience": c.get("signal_salience_level"), "explicitness": c.get("identity_description_mode"),
-               "location": c.get("resume_location_level"), "cand_rel": c.get("candidate_relative_to_job"),
+               "location": c.get("resume_location_level"), "relevance": c.get("professional_relevance_level"),
+               "cand_rel": c.get("candidate_relative_to_job"),
                "is_money": is_money, "increment": c.get("offer_increment"),
                "modal_control": c.get("modal_offer_usd") if is_money else None,
                "modal_treatment": t.get("modal_offer_usd") if is_money else None,
@@ -104,6 +105,31 @@ def main():
         for cond, row in agg.iterrows():
             print(f"    {cond:<30} mean={row['mean']:+10.3f}  sem={row['sem']:7.3f}  n={int(row['count'])}")
 
+    print("\n" + "="*70, "\n3b. DOSE-RESPONSE BY FACTOR (single factor varied; channel held fixed)\n", "="*70, sep="")
+    DOSE_ORDER = {"explicitness": ["organization_name_only", "identity_description_subtle", "identity_description_explicit", "strongly_explicit_identity"],
+                  "salience": ["low", "moderate", "high", "leadership"],
+                  "location": ["bottom_section", "mid_resume", "leadership_section", "experience_embedded"],
+                  "relevance": ["low", "moderate", "high"]}
+    dose_mono = {}
+    any_dose = False
+    for fac in ["explicitness", "salience", "location", "relevance"]:
+        if df[fac].nunique() <= 1:
+            continue
+        any_dose = True
+        for pc in OUTCOMES:
+            d = df[df.prompt_condition == pc]
+            if d.empty:
+                continue
+            levels = [l for l in DOSE_ORDER[fac] if l in set(d[fac])] or sorted(d[fac].dropna().unique(), key=str)
+            means = [d[d[fac] == l]["delta"].mean() for l in levels]
+            mono = len(levels) >= 3 and (all(x <= y for x, y in zip(means, means[1:])) or all(x >= y for x, y in zip(means, means[1:])))
+            dose_mono[(fac, pc)] = mono
+            print(f"  [{fac} | {pc}]" + ("   MONOTONIC dose-response" if mono else ""))
+            for l, m in zip(levels, means):
+                print(f"     {str(l).replace('identity_description_', ''):<30} mean Δ={m:+10.3f}  n={int((d[fac] == l).sum())}")
+    if not any_dose:
+        print("  (no single dose factor varies in this run)")
+
     print("\n" + "="*70, "\n2. CHANNEL REGRESSION  (delta ~ channels [+ interactions])\n", "="*70, sep="")
     inter = [("affiliation", "conference"), ("affiliation", "scholarship"), ("conference", "scholarship")]
     triple = ("affiliation", "conference", "scholarship")
@@ -111,6 +137,12 @@ def main():
         d = df[df.prompt_condition == pc].copy()
         if d.empty: continue
         active = [c for c in CHANNELS if d[c].sum() > 0]   # presentation absent in pilot_v2
+        if not active:
+            print(f"\n[{pc}]  (single-signal dose run — no channel variation; see DOSE-RESPONSE section)")
+            continue
+        if d["delta"].nunique() <= 1:
+            print(f"\n[{pc}]  (no delta variance — e.g. 100% identical monetary offers; see MONETARY section)")
+            continue
         # NO intercept: the paired delta is 0 at the 'none' cell (absent from the data),
         # so an intercept would be aliased -> 8 params over 7 identity cells. Without it,
         # the orthogonal 2^k factorial is full rank and main effects + interactions are identified.
@@ -169,13 +201,15 @@ def main():
         print(f"  {pc:<26} meanΔ={x.mean():+10.3f} 95%CI=[{ci[0]:+.3f},{ci[1]:+.3f}] se={x.std(ddof=1)/np.sqrt(len(x)):.3f} "
               f"floor=±{floor:.3f} | favor_control={ (x>0).mean():.2f} favor_treatment={(x<0).mean():.2f}")
 
-    varying = [f for f in ["salience", "explicitness", "location", "qual", "job", "cand_rel"] if df[f].nunique() > 1]
+    varying = [f for f in ["salience", "explicitness", "location", "relevance", "qual", "job", "cand_rel"] if df[f].nunique() > 1]
     if varying:
         print("\n" + "="*70, f"\n7. EXPANDED-FACTOR REGRESSION  (delta ~ channels + {' + '.join(varying)})\n", "="*70, sep="")
         for pc in OUTCOMES:
             d = df[df.prompt_condition == pc]
             if d.empty: continue
-            active = [c for c in CHANNELS if d[c].sum() > 0]
+            if d["delta"].nunique() <= 1:
+                print(f"\n[{pc}]  (no delta variance; skipped)"); continue
+            active = [c for c in CHANNELS if 0 < d[c].sum() < len(d)]   # only channels that VARY (else aliased w/ intercept)
             parts = {"intercept": np.ones(len(d))}
             names_ = ["intercept"] + active
             for c in active: parts[c] = d[c].values.astype(float)
@@ -217,6 +251,14 @@ def main():
             exact, v = money_verdict[pc]
             print(f"  [{pc}] -> {v} (exact-match {exact:.0%})")
             continue
+        dose_facs = [f for f in ("explicitness", "salience", "location", "relevance") if d[f].nunique() > 1]
+        if dose_facs:  # single-factor dose run: report the dose verdict, not channel main effects
+            for fac in dose_facs:
+                lv = [l for l in DOSE_ORDER[fac] if l in set(d[fac])] or sorted(d[fac].dropna().unique(), key=str)
+                means = [d[d[fac] == l]["delta"].mean() for l in lv]
+                mono = len(lv) >= 3 and (all(x <= y for x, y in zip(means, means[1:])) or all(x >= y for x, y in zip(means, means[1:])))
+                print(f"  [{pc}] -> {fac} " + ("MONOTONIC dose-response" if mono else "non-monotonic (factor modulates, not a clean dose)"))
+            continue
         active = [c for c in CHANNELS if d[c].sum() > 0]
         main_sig, inter_sig = False, False
         if active:
@@ -228,14 +270,6 @@ def main():
             nm = len(active)
             main_sig = any(abs(tv) >= 2 for tv in t[:nm])
             inter_sig = any(abs(tv) >= 2 for tv in t[nm:])
-        for fac in ("explicitness", "salience", "location"):
-            if d[fac].nunique() > 1:
-                lv = [l for l in ["organization_name_only","identity_description_subtle","identity_description_explicit","strongly_explicit_identity",
-                                   "low","moderate","high","leadership","bottom_section","mid_resume","leadership_section"] if l in set(d[fac])]
-                means = [d[d[fac]==l]["delta"].mean() for l in lv]
-                mono = all(x <= y for x, y in zip(means, means[1:])) or all(x >= y for x, y in zip(means, means[1:]))
-                if mono and len(lv) >= 3:
-                    print(f"  [{pc}] -> {fac} DOSE-RESPONSE (monotonic over {lv})")
         if not main_sig and inter_sig:
             print(f"  [{pc}] -> COMPOSITION-DEPENDENT identity effects (single-channel ~null, interactions nonzero)")
         elif main_sig:

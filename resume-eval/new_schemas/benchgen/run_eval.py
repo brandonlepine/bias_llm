@@ -156,7 +156,12 @@ def main():
             rec = {k: ex.get(k) for k in ("experiment_id", "job_id", "qualification_profile_id",
                    "identity_signal_condition_id", "identity_load", "treatment_or_control",
                    "paired_example_id", "name_variant_id", "perceived_gender", "prompt_condition_id",
-                   "output_type", "signal_channels", "identity_description_mode", "resume_length_mode")}
+                   "output_type", "signal_channels", "identity_description_mode", "resume_length_mode",
+                   "exact_signal_composition", "factorial_cell_id", "signal_salience_level",
+                   "resume_location_level", "professional_relevance_level", "candidate_relative_to_job",
+                   "offer_increment", "channel_affiliation_present", "channel_conference_present",
+                   "channel_scholarship_present", "channel_leadership_present", "channel_volunteer_present",
+                   "channel_presentation_present")}
             system, ub = ex["job_system_prompt"], user_body_of(ex)
             if ot == "score_0_100":
                 ev, am, mass = number_ev(system, ub)
