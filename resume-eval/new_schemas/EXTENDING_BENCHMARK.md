@@ -73,3 +73,37 @@ Add the approved `job_id`(s) to an experiments config (e.g. `factorial_channel_x
 and run `generate -> run_eval -> diagnostics -> analyze` (see `WHY_FACTORIAL.md`).
 The compatibility gate skips jobs whose `resume_generation_axes` don't match a profile's
 experience tier, so you won't silently render an early-career backbone under a senior job.
+
+---
+
+## Increment 2: role-family backbones, fit scoring, job validation
+
+### Backbones are selected by role family
+Backbones live in `resume_backbones/*.json`, each with a `target_job_family`
+(`mechanical_engineering`, `generic_professional`, …). The generator picks the
+backbone matching the job's `role.job_family` automatically when a config sets
+`"backbones": "auto"` (or omits it); otherwise it uses the explicit list (backward
+compatible — existing configs with `"backbones": ["MECH_ENG_BACKBONE_001"]` are
+unchanged). Unknown families fall back to `generic_professional`. Add a role family
+by dropping a new `resume_backbones/<family>.json` with the same pool structure.
+(The renderer is still mech-oriented in its bullet phrasing; per-family bullet
+generation is a further extension.)
+
+### Validate a draft job before use
+```bash
+python -m new_schemas.benchgen.validate_job --job new_schemas/job_descriptions/drafts/<JOB>.json
+```
+Checks required fields, lists low-confidence inferred fields needing review, and
+**exits non-zero unless `review_status: approved_for_experiment`** (or `--allow-draft`).
+
+### Construction fit scores (intended, not model scores)
+Every generated resume records `education_match_score`, `experience_match_score`,
+`skills_match_score`, `domain_match_score`, `project_match_score`, and
+`overall_constructed_fit_score` (0–1), derived from the QP dimensions vs the job.
+Use them in analysis to check whether **model** ratings track the **intended**
+qualification (e.g. do model scores rise with `overall_constructed_fit_score`?).
+
+### Backward-compatibility check
+```bash
+python -m new_schemas.benchgen.test_backward_compat   # asserts existing JSONs + both backbone paths still work
+```

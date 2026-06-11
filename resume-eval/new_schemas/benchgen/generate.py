@@ -107,6 +107,38 @@ def candidate_relative_to_job(qp, job):
     return "near_match" if yrs <= jmin + 2 else "strong_match"
 
 
+_LVL = {"low": 0.30, "moderate": 0.60, "high": 0.90}
+_PROJREL = {"none": 0.20, "some": 0.55, "strong": 0.90}
+
+
+def fit_scores(qp, job):
+    """Intended CONSTRUCTION fit (not a model score): does the built resume match the job?"""
+    dim, c = qp["dimensions"], qp["concrete"]
+    edu, skills, domain = _LVL[dim["education_quality"]], _LVL[dim["skills_match"]], _LVL[dim["domain_fit"]]
+    proj = _PROJREL[c["project_relevance"]]
+    yrs = _BAND_YEARS.get(c["years_experience_band"], 2)
+    jmin = job["requirements"].get("minimum_years_experience") or 0
+    if yrs < jmin:
+        exp = max(0.2, 0.6 - 0.1 * (jmin - yrs))
+    elif yrs > jmin + 6:
+        exp = 0.70
+    else:
+        exp = min(0.95, 0.5 + 0.08 * (yrs - jmin) + 0.2 * _LVL[dim["experience_quality"]])
+    return {"education_match_score": edu, "experience_match_score": round(exp, 3),
+            "skills_match_score": skills, "domain_match_score": domain, "project_match_score": proj,
+            "overall_constructed_fit_score": round((edu + exp + skills + domain + proj) / 5, 3)}
+
+
+def _norm_family(x):
+    return (x or "").strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def select_backbone(job, family_map, backbones):
+    fam = _norm_family(job["role"].get("job_family"))
+    norm_map = {_norm_family(k): v for k, v in family_map.items()}
+    return norm_map.get(fam) or norm_map.get("generic_professional") or next(iter(backbones))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", required=True)
@@ -138,20 +170,24 @@ def main():
     os.makedirs(run_dir, exist_ok=True)
     json.dump(cfg, open(os.path.join(run_dir, "config.json"), "w"), indent=2)
 
+    family_map = loaders.backbone_family_map(backbones)
+    auto_backbone = cfg.get("backbones") in (None, "auto", ["auto"])
     base_seed = cfg.get("seed", 0)
     rows, skipped = [], []
     n_resume = 0
-    print("rendering resumes + token diagnostics ...", flush=True)
+    print(f"rendering resumes + token diagnostics ... (backbone: {'auto-by-role-family' if auto_backbone else 'explicit'})", flush=True)
     for job_id in cfg["jobs"]:
         job = jobs[job_id]
         system, context = job_system_prompt(job), job_context_text(job)
-        for bk_id in cfg["backbones"]:
+        bk_ids = [select_backbone(job, family_map, backbones)] if auto_backbone else cfg["backbones"]
+        for bk_id in bk_ids:
             backbone = backbones[bk_id]
             for qp_id in cfg["qualification_profiles"]:
                 qp = quals[qp_id]
                 if not compatible(qp, job):
                     skipped.append((job_id, qp_id)); continue
                 cand_rel = candidate_relative_to_job(qp, job)
+                fit = fit_scores(qp, job)
                 grad = render.grad_year(qp)
                 for ic in cfg["identity_conditions"]:
                     channels = ic["channels"]
@@ -203,6 +239,7 @@ def main():
                                                 "identity_description_mode": explicit, "signal_salience_level": salience,
                                                 "resume_location_level": location, "professional_relevance_level": relevance_level,
                                                 "candidate_relative_to_job": cand_rel, "token_match_mode": match_mode,
+                                                **fit,
                                                 "signal_channels": channels,
                                                 "job_system_prompt": system, "instruction": instr,
                                                 "rendered_resume": resume, "rendered_prompt": prompt,

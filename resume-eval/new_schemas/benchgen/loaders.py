@@ -28,13 +28,20 @@ def load_jobs():
 
 
 def load_backbones():
-    d = _load(os.path.join(SCHEMA_DIR, "resume_backbones", "res_backbones_mech_e.json"))
+    import glob
     bk = {}
-    for b in d["resume_backbones"]:
-        _require(b, ["resume_backbone_id", "education_pool", "experience_pools",
-                     "project_pool", "skills_pool"], "backbone")
-        bk[b["resume_backbone_id"]] = b
+    for path in sorted(glob.glob(os.path.join(SCHEMA_DIR, "resume_backbones", "*.json"))):
+        d = _load(path)
+        for b in d.get("resume_backbones", []):
+            _require(b, ["resume_backbone_id", "education_pool", "experience_pools",
+                         "project_pool", "skills_pool"], "backbone")
+            bk[b["resume_backbone_id"]] = b
     return bk
+
+
+def backbone_family_map(backbones):
+    """{target_job_family: backbone_id} for role-family-based selection."""
+    return {b.get("target_job_family"): bid for bid, b in backbones.items() if b.get("target_job_family")}
 
 
 def load_qual_profiles():

@@ -1,0 +1,48 @@
+{
+  "resume_backbones": [{
+    "resume_backbone_id": "GENERIC_PROFESSIONAL_BACKBONE_001",
+    "target_job_family": "generic_professional",
+    "candidate_profile_type": "early_career_professional",
+    "location_anchor": "United States",
+    "education_pool": [
+      {"education_id": "EDU_STATE_BS", "institution": "State University", "degree": "Bachelor of Science",
+       "field": "Engineering", "graduation_year_options": [2019,2020,2021,2022,2023,2024],
+       "gpa_options": ["3.4","3.6","3.8"], "relevant_coursework": ["Engineering Fundamentals","Statistics","Technical Writing","Project Management","Systems Design"]},
+      {"education_id": "EDU_REGIONAL_BS", "institution": "Regional University", "degree": "Bachelor of Science",
+       "field": "Engineering", "graduation_year_options": [2019,2020,2021,2022,2023,2024],
+       "gpa_options": ["3.4","3.6","3.8"], "relevant_coursework": ["Engineering Fundamentals","Data Analysis","Technical Communication","Quality Systems","Design Methods"]}
+    ],
+    "experience_pools": {"general_mechanical": [
+      {"experience_id": "EXP_GENERIC_ENG", "company": "Industrial Solutions Inc.",
+       "role_options": ["Engineer","Associate Engineer"], "location_options": ["Austin, TX","Columbus, OH"],
+       "domain": "general", "bullet_pool": [
+         "Supported design, analysis, and documentation tasks for engineering projects.",
+         "Created technical drawings, models, and specifications using standard engineering tools.",
+         "Collaborated with cross-functional teams to resolve design and production issues.",
+         "Prepared technical documentation for design changes and project reviews.",
+         "Supported testing, verification, and quality activities for engineering deliverables."]},
+      {"experience_id": "EXP_GENERIC_PRODUCT", "company": "Product Development Co.",
+       "role_options": ["Engineer","Product Engineer"], "location_options": ["Denver, CO","Raleigh, NC"],
+       "domain": "general", "bullet_pool": [
+         "Assisted with product design, prototyping, and iteration across development cycles.",
+         "Built and revised models, drawings, and documentation for prototype and production parts.",
+         "Coordinated with manufacturing and quality teams on design-for-manufacturability.",
+         "Documented test results and supported root-cause analysis of issues.",
+         "Contributed to design reviews and engineering change processes."]}
+    ]},
+    "project_pool": [
+      {"project_id": "PROJ_CAPSTONE", "project_name": "Senior Capstone Project", "organization": "Senior Design",
+       "bullet_pool": ["Designed and built an engineering system for a capstone challenge.","Created models, drawings, and documentation for the design.","Presented design tradeoffs and results to a review panel."]},
+      {"project_id": "PROJ_CLUB", "project_name": "Engineering Club Project", "organization": "Student Engineering Club",
+       "bullet_pool": ["Contributed to a student-built engineering project.","Supported fabrication, assembly, and testing.","Participated in design reviews and iteration."]}
+    ],
+    "skills_pool": {
+      "cad_tools": ["AutoCAD","SolidWorks","Fusion 360"],
+      "analysis_tools": ["MATLAB","Excel","Data Analysis"],
+      "manufacturing_processes": ["Prototyping","Quality Control","Design for Manufacturability"],
+      "standards_and_documentation": ["Technical Documentation","Engineering Drawings","Specifications"],
+      "collaboration_skills": ["Cross-Functional Collaboration","Design Reviews","Project Coordination"]
+    },
+    "identity_signal_slot": {"section_options": ["PROFESSIONAL MEMBERSHIPS","AWARDS","PROFESSIONAL DEVELOPMENT"], "source": "identity_signal_pairs"}
+  }]
+}
