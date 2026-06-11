@@ -267,5 +267,74 @@
         "explicit_descriptor": "a mobility engineering audience"
       }
     }
-  ]
+  ],
+  "relevance_dose": {
+    "signal_channel": "relevance",
+    "section": "PROFESSIONAL MEMBERSHIPS",
+    "role_word": "Member",
+    "date_style": "range_present",
+    "generic_description": "Participated in professional development events, mentoring activities, and networking programs.",
+    "levels": {
+      "low": {
+        "treatment": {
+          "name": "the Los Angeles LGBT Center",
+          "identity_ref": "LGBTQ",
+          "subtle_descriptor": "LGBTQ+ community",
+          "explicit_descriptor": "LGBTQ+ community support"
+        },
+        "control": {
+          "name": "the United Way",
+          "identity_ref": "none",
+          "subtle_descriptor": "community service",
+          "explicit_descriptor": "community service"
+        },
+        "neutral": {
+          "name": "Rotary International",
+          "identity_ref": "none",
+          "subtle_descriptor": "community service",
+          "explicit_descriptor": "community service"
+        }
+      },
+      "moderate": {
+        "treatment": {
+          "name": "Out in Science, Technology, Engineering, and Mathematics (oSTEM)",
+          "identity_ref": "LGBTQ",
+          "subtle_descriptor": "LGBTQ+ STEM",
+          "explicit_descriptor": "LGBTQ+ inclusion in STEM"
+        },
+        "control": {
+          "name": "the Society of Manufacturing Engineers",
+          "identity_ref": "none",
+          "subtle_descriptor": "manufacturing engineering",
+          "explicit_descriptor": "manufacturing engineering practice"
+        },
+        "neutral": {
+          "name": "the National Society of Professional Engineers",
+          "identity_ref": "none",
+          "subtle_descriptor": "professional engineering",
+          "explicit_descriptor": "professional engineering practice"
+        }
+      },
+      "high": {
+        "treatment": {
+          "name": "the ASME LGBTQ+ Engineering Affinity Group",
+          "identity_ref": "LGBTQ",
+          "subtle_descriptor": "LGBTQ+ engineering",
+          "explicit_descriptor": "LGBTQ+ achievement in engineering"
+        },
+        "control": {
+          "name": "the ASME Mechanical Engineering Division",
+          "identity_ref": "none",
+          "subtle_descriptor": "mechanical engineering",
+          "explicit_descriptor": "mechanical engineering practice"
+        },
+        "neutral": {
+          "name": "Tau Beta Pi Engineering Honor Society",
+          "identity_ref": "none",
+          "subtle_descriptor": "engineering honor society",
+          "explicit_descriptor": "engineering honor society achievement"
+        }
+      }
+    }
+  }
 }

@@ -61,6 +61,8 @@ def load_identity_pairs():
         _require(sig, ["signal_id", "signal_channel", "section", "role_word",
                        "generic_description", "treatment", "control", "neutral"], "identity_signal")
         by_channel[sig["signal_channel"]] = sig  # one triple per channel
+    if "relevance_dose" in d:
+        by_channel["relevance"] = d["relevance_dose"]  # {section, role_word, ..., levels:{low/moderate/high:{t/c/n}}}
     return by_channel
 
 

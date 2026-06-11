@@ -197,40 +197,59 @@ def _identity_block(sig, variant, grad, description_mode, render_mode, salience=
 
 def identity_sections(job, channels, arm, by_channel, grad,
                       description_mode="organization_name_only", render_mode="descriptive_block",
-                      salience="low", location="bottom_section"):
-    """Return ([(section, block)], diag). location: bottom_section (per-channel sections),
-    leadership_section (all blocks grouped under one activities section), mid_resume
-    (placement handled by the caller). salience independently sets the role word."""
-    blocks, diag = [], []
+                      salience="low", location="bottom_section", relevance_level=None):
+    """Return ([(section, block)], diag, embed_bullets). location: bottom_section (per-channel
+    sections), leadership_section (one combined section), mid_resume (placement by caller),
+    experience_embedded (signal returned as bullet(s) to embed in PROFESSIONAL EXPERIENCE).
+    channel 'relevance' uses relevance_level to pick a relevance-graded organization."""
+    blocks, diag, embed = [], [], []
     agency, lead_implied = SALIENCE_META.get(salience, ("passive", False))
     for ch in channels:
-        sig = by_channel.get(ch)
-        if not sig:
+        if ch == "relevance":
+            rel = by_channel.get("relevance")
+            if not rel:
+                continue
+            variant = rel["levels"].get(relevance_level or "moderate")[arm]
+            sig = {"signal_channel": "relevance", "signal_id": "relevance", "role_word": rel["role_word"],
+                   "date_style": rel["date_style"], "generic_description": rel["generic_description"],
+                   "section": rel["section"]}
+        else:
+            sig = by_channel.get(ch)
+            if not sig:
+                continue
+            variant = sig[arm]
+        vid = variant.get("variant_id", f"{ch}_{arm}")
+        if location == "experience_embedded":
+            bullet = f"- Organized mentoring and outreach activities with {variant['name']}."
+            embed.append(bullet)
+            diag.append({"section": "PROFESSIONAL EXPERIENCE (embedded)", "channel": ch, "signal_id": sig["signal_id"],
+                         "variant_id": vid, "identity_ref": variant["identity_ref"], "name": variant["name"],
+                         "block": bullet, "salience": salience, "resume_location_level": location})
             continue
-        variant = sig[arm]
         block = _identity_block(sig, variant, grad, description_mode, render_mode, salience)
         section = LEADERSHIP_SECTION_LABEL if location == "leadership_section" else sig["section"]
         blocks.append((section, block, ch))
         diag.append({"section": section, "channel": ch, "signal_id": sig["signal_id"],
-                     "variant_id": variant["variant_id"], "identity_ref": variant["identity_ref"],
+                     "variant_id": vid, "identity_ref": variant["identity_ref"],
                      "name": variant["name"], "block": block, "salience": salience,
                      "signal_agency_level": agency, "signal_leadership_implied": lead_implied})
+    if location == "experience_embedded":
+        return [], diag, embed
     if location == "leadership_section":  # one combined section, bullets in channel order
         if blocks:
-            body = "\n".join(b for _, b, _ in blocks)
-            return [(LEADERSHIP_SECTION_LABEL, body)], diag
-        return [], diag
+            return [(LEADERSHIP_SECTION_LABEL, "\n".join(b for _, b, _ in blocks))], diag, embed
+        return [], diag, embed
     secs = {}
     for section, block, _ in blocks:
         secs.setdefault(section, []).append(block)
     ordered = [(sec, "\n".join(secs[sec])) for sec in SECTION_ORDER if sec in secs]
-    return ordered, diag
+    return ordered, diag, embed
 
 
 # ---------- full resume -------------------------------------------------------
 
 def render_base_and_signal(job, backbone, qp, identity_secs, name, city_state, rng,
-                           mode="realistic", location="bottom_section"):
+                           mode="realistic", location="bottom_section", embed_bullets=None):
     c = qp["concrete"]
     band = c["years_experience_band"]
     full = f"{name['first_name']} {name['last_name']}"
@@ -245,9 +264,17 @@ def render_base_and_signal(job, backbone, qp, identity_secs, name, city_state, r
     proj = _projects(backbone, qp, mode)
     if proj:
         parts.append("## PROJECTS\n\n" + proj)
+    edu = "## EDUCATION\n\n" + _education(backbone, qp, band, mode)
+
+    if embed_bullets:  # experience_embedded: signal is a bullet INSIDE experience; base excludes it
+        base_parts = list(parts) + [edu]
+        full_parts = list(parts)
+        full_parts[3] = full_parts[3] + "\n" + "\n".join(embed_bullets)  # append to PROFESSIONAL EXPERIENCE
+        full_parts.append(edu)
+        return ("\n\n---\n\n".join(base_parts), "\n".join(embed_bullets), "\n\n---\n\n".join(full_parts))
+
     signal_parts = [f"## {sec}\n\n{block}" for sec, block in identity_secs]
     signal = "\n\n---\n\n".join(signal_parts)
-    edu = "## EDUCATION\n\n" + _education(backbone, qp, band, mode)
     if location == "mid_resume" and signal_parts:
         # signal sections after PROJECTS, before EDUCATION
         parts.extend(signal_parts)

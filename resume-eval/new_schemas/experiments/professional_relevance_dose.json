@@ -1,6 +1,6 @@
 {
-  "experiment_id": "location_dose",
-  "description": "DOSE: single affiliation signal x resume location (bottom_section / mid_resume / leadership_section / experience_embedded). Signal content fixed.",
+  "experiment_id": "professional_relevance_dose",
+  "description": "DOSE: single signal x professional relevance (low=general community service / moderate=LGBTQ STEM / high=LGBTQ engineering). Section/role/format held constant (Member, X under PROFESSIONAL MEMBERSHIPS); only the organization's engineering relevance varies. salience+explicitness fixed.",
   "jobs": [
     "JOB_LOCKHEED_MECH_ENG_ENTRY_SUNNYVALE_2026"
   ],
@@ -13,12 +13,26 @@
   ],
   "identity_conditions": [
     {
-      "identity_signal_condition_id": "affiliation",
+      "identity_signal_condition_id": "relevance",
       "identity_load": 1,
       "channels": [
-        "affiliation"
+        "relevance"
       ]
     }
+  ],
+  "relevance_levels": [
+    "low",
+    "moderate",
+    "high"
+  ],
+  "salience_levels": [
+    "low"
+  ],
+  "explicitness_levels": [
+    "organization_name_only"
+  ],
+  "location_levels": [
+    "bottom_section"
   ],
   "name_variants": [
     "NV_M_WHITE_01",
@@ -46,17 +60,5 @@
   ],
   "resume_length_mode": "realistic",
   "seed": 0,
-  "max_examples": 0,
-  "salience_levels": [
-    "low"
-  ],
-  "explicitness_levels": [
-    "organization_name_only"
-  ],
-  "location_levels": [
-    "bottom_section",
-    "mid_resume",
-    "leadership_section",
-    "experience_embedded"
-  ]
+  "max_examples": 0
 }
