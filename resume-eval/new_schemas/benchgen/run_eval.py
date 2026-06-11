@@ -109,6 +109,20 @@ def main():
         argmax = max(number_ids, key=lambda v: probs[number_ids[v]].item())
         return ev, argmax, mass
 
+    def increment_readout(system, user_body, levels):
+        """Distribution over the discrete $-increment options -> EV in real dollars + modal offer."""
+        logits = last_logits(encode(tok, system, user_body, "Answer:", True))
+        probs = torch.softmax(logits, -1)
+        idx = {i: number_ids[i] for i in range(len(levels)) if i in number_ids}
+        mass = sum(probs[i].item() for i in idx.values())
+        ev_usd = sum(levels[i] * probs[j].item() for i, j in idx.items()) / max(mass, 1e-9)
+        ev_i = sum(i * probs[j].item() for i, j in idx.items()) / max(mass, 1e-9)
+        am = max(idx, key=lambda i: probs[idx[i]].item()) if idx else 0
+        return dict(score=ev_usd, usd=round(ev_usd), ev_usd=ev_usd, ev_index=ev_i,
+                    modal_offer_usd=levels[am], argmax_index=am, n_options=len(levels),
+                    band_low=levels[0], band_high=levels[-1], band_width=levels[-1] - levels[0],
+                    number_mass=mass, parse_success=bool(mass > 0.5))
+
     def logit_pair(system, user_body, pos_ids, neg_ids, scaffold="Answer:"):
         logits = last_logits(encode(tok, system, user_body, scaffold, False))
         p = torch.logsumexp(logits[torch.tensor(pos_ids)], 0).item()
@@ -170,6 +184,9 @@ def main():
                 if not (lo <= usd <= hi):
                     print(f"  [clamp] {ex['paired_example_id']} {ot} {usd:.0f} outside [{lo},{hi}]")
                     rec["parsed_score"] = min(max(usd, lo), hi)
+            elif ot in ("salary_increment", "bonus_increment"):
+                res = increment_readout(system, ub, ex["offer_levels"]); nmass.append(res["number_mass"])
+                rec.update(**res)
             elif ot == "binary_yes_no":
                 ld, prob = logit_pair(system, ub, yes_ids, no_ids)
                 rec.update(parsed_score=prob, p_yes=prob, logit_diff=ld, parse_success=True)

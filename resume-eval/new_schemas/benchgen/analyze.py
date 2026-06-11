@@ -220,7 +220,8 @@ def main():
     os.makedirs(fig_dir, exist_ok=True)
 
     rows = [json.loads(l) for l in open(args.scored)]
-    UNITS = {"score_0_100": "0-100", "salary_usd": "USD", "bonus_usd": "USD", "binary_yes_no": "p(Yes)"}
+    UNITS = {"score_0_100": "0-100", "salary_usd": "USD", "bonus_usd": "USD",
+             "salary_increment": "USD", "bonus_increment": "USD", "binary_yes_no": "p(Yes)"}
     single_pcs = sorted({r["prompt_condition_id"] for r in rows if r.get("output_type") != "pairwise_AB"})
 
     print("=== IDENTITY EFFECT vs NOISE FLOOR (control − treatment; + = identity penalized) ===\n")
