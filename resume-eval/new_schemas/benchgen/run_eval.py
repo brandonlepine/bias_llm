@@ -118,7 +118,7 @@ def main():
         ev_usd = sum(levels[i] * probs[j].item() for i, j in idx.items()) / max(mass, 1e-9)
         ev_i = sum(i * probs[j].item() for i, j in idx.items()) / max(mass, 1e-9)
         am = max(idx, key=lambda i: probs[idx[i]].item()) if idx else 0
-        return dict(score=ev_usd, usd=round(ev_usd), ev_usd=ev_usd, ev_index=ev_i,
+        return dict(parsed_score=ev_usd, usd=round(ev_usd), ev_usd=ev_usd, ev_index=ev_i,
                     modal_offer_usd=levels[am], argmax_index=am, n_options=len(levels),
                     band_low=levels[0], band_high=levels[-1], band_width=levels[-1] - levels[0],
                     number_mass=mass, parse_success=bool(mass > 0.5))
