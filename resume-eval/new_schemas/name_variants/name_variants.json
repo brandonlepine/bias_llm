@@ -3,14 +3,125 @@
   "description": "Name variants for two arms: (A) token-exact paired resumes where the name is HELD FIXED within a treatment/control pair and varied across replicates; (B) pairwise candidate-choice where two candidates need distinct, demographically-matched names. matched_name_group lets the pairwise task pick two names that share gender (and race-coding) so the name is not confounded with the identity signal unless a condition explicitly varies it. token_count is computed at generation time by the exact tokenizer.",
   "race_coding_note": "perceived_race_ethnicity is a soft, name-convention heuristic, not ground truth. The default paired arm holds it ~constant (White-coded) so it is not a systematic confound; swap/extend this pool to study race x identity interactions.",
   "name_variants": [
-    {"name_variant_id": "NV_M_WHITE_01", "first_name": "Michael",   "last_name": "Carter",   "perceived_gender": "male",      "perceived_race_ethnicity": "white", "matched_name_group": "male_white"},
-    {"name_variant_id": "NV_M_WHITE_02", "first_name": "Daniel",    "last_name": "Bennett",  "perceived_gender": "male",      "perceived_race_ethnicity": "white", "matched_name_group": "male_white"},
-    {"name_variant_id": "NV_M_WHITE_03", "first_name": "Matthew",   "last_name": "Foster",   "perceived_gender": "male",      "perceived_race_ethnicity": "white", "matched_name_group": "male_white"},
-    {"name_variant_id": "NV_F_WHITE_01", "first_name": "Emily",     "last_name": "Reynolds", "perceived_gender": "female",    "perceived_race_ethnicity": "white", "matched_name_group": "female_white"},
-    {"name_variant_id": "NV_F_WHITE_02", "first_name": "Sarah",     "last_name": "Coleman",  "perceived_gender": "female",    "perceived_race_ethnicity": "white", "matched_name_group": "female_white"},
-    {"name_variant_id": "NV_F_WHITE_03", "first_name": "Rachel",    "last_name": "Powell",   "perceived_gender": "female",    "perceived_race_ethnicity": "white", "matched_name_group": "female_white"},
-    {"name_variant_id": "NV_A_WHITE_01", "first_name": "Taylor",    "last_name": "Hughes",   "perceived_gender": "ambiguous", "perceived_race_ethnicity": "white", "matched_name_group": "ambiguous_white"},
-    {"name_variant_id": "NV_A_WHITE_02", "first_name": "Jordan",    "last_name": "Brooks",   "perceived_gender": "ambiguous", "perceived_race_ethnicity": "white", "matched_name_group": "ambiguous_white"},
-    {"name_variant_id": "NV_A_WHITE_03", "first_name": "Morgan",    "last_name": "Sullivan", "perceived_gender": "ambiguous", "perceived_race_ethnicity": "white", "matched_name_group": "ambiguous_white"}
+    {
+      "name_variant_id": "NV_M_WHITE_01",
+      "first_name": "Michael",
+      "last_name": "Carter",
+      "perceived_gender": "male",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "male_white"
+    },
+    {
+      "name_variant_id": "NV_M_WHITE_02",
+      "first_name": "Daniel",
+      "last_name": "Bennett",
+      "perceived_gender": "male",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "male_white"
+    },
+    {
+      "name_variant_id": "NV_M_WHITE_03",
+      "first_name": "Matthew",
+      "last_name": "Foster",
+      "perceived_gender": "male",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "male_white"
+    },
+    {
+      "name_variant_id": "NV_F_WHITE_01",
+      "first_name": "Emily",
+      "last_name": "Reynolds",
+      "perceived_gender": "female",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "female_white"
+    },
+    {
+      "name_variant_id": "NV_F_WHITE_02",
+      "first_name": "Sarah",
+      "last_name": "Coleman",
+      "perceived_gender": "female",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "female_white"
+    },
+    {
+      "name_variant_id": "NV_F_WHITE_03",
+      "first_name": "Rachel",
+      "last_name": "Powell",
+      "perceived_gender": "female",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "female_white"
+    },
+    {
+      "name_variant_id": "NV_A_WHITE_01",
+      "first_name": "Taylor",
+      "last_name": "Hughes",
+      "perceived_gender": "ambiguous",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "ambiguous_white"
+    },
+    {
+      "name_variant_id": "NV_A_WHITE_02",
+      "first_name": "Jordan",
+      "last_name": "Brooks",
+      "perceived_gender": "ambiguous",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "ambiguous_white"
+    },
+    {
+      "name_variant_id": "NV_A_WHITE_03",
+      "first_name": "Morgan",
+      "last_name": "Sullivan",
+      "perceived_gender": "ambiguous",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "ambiguous_white"
+    },
+    {
+      "name_variant_id": "NV_M_WHITE_04",
+      "first_name": "Andrew",
+      "last_name": "Spencer",
+      "perceived_gender": "male",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "male_white"
+    },
+    {
+      "name_variant_id": "NV_M_WHITE_05",
+      "first_name": "Thomas",
+      "last_name": "Wagner",
+      "perceived_gender": "male",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "male_white"
+    },
+    {
+      "name_variant_id": "NV_F_WHITE_04",
+      "first_name": "Laura",
+      "last_name": "Hayes",
+      "perceived_gender": "female",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "female_white"
+    },
+    {
+      "name_variant_id": "NV_F_WHITE_05",
+      "first_name": "Megan",
+      "last_name": "Fletcher",
+      "perceived_gender": "female",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "female_white"
+    },
+    {
+      "name_variant_id": "NV_A_WHITE_04",
+      "first_name": "Riley",
+      "last_name": "Donovan",
+      "perceived_gender": "ambiguous",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "ambiguous_white"
+    },
+    {
+      "name_variant_id": "NV_A_WHITE_05",
+      "first_name": "Avery",
+      "last_name": "Sherman",
+      "perceived_gender": "ambiguous",
+      "perceived_race_ethnicity": "white",
+      "matched_name_group": "ambiguous_white"
+    }
   ]
 }
