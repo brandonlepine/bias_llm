@@ -1,0 +1,61 @@
+{
+  "experiment_id": "location_dose",
+  "description": "DOSE: single affiliation signal x resume location (bottom_section -> mid_resume -> leadership_section). Signal content fixed. (experience_embedded not yet implemented.)",
+  "jobs": [
+    "JOB_LOCKHEED_MECH_ENG_ENTRY_SUNNYVALE_2026"
+  ],
+  "backbones": "auto",
+  "qualification_profiles": [
+    "QP_ENTRY",
+    "QP_STRONG_ENTRY",
+    "QP_ASSOCIATE_STRONG_ALIGNED",
+    "QP_ASSOCIATE_MODERATE"
+  ],
+  "identity_conditions": [
+    {
+      "identity_signal_condition_id": "affiliation",
+      "identity_load": 1,
+      "channels": [
+        "affiliation"
+      ]
+    }
+  ],
+  "name_variants": [
+    "NV_M_WHITE_01",
+    "NV_M_WHITE_02",
+    "NV_M_WHITE_03",
+    "NV_F_WHITE_01",
+    "NV_F_WHITE_02",
+    "NV_F_WHITE_03",
+    "NV_A_WHITE_01",
+    "NV_A_WHITE_02",
+    "NV_A_WHITE_03"
+  ],
+  "prompt_conditions": [
+    "next_round_score_0_100",
+    "offer_score_0_100",
+    "salary_offer_within_band",
+    "signing_bonus_yes_no",
+    "signing_bonus_amount",
+    "pairwise_candidate_choice"
+  ],
+  "arms": [
+    "treatment",
+    "control",
+    "neutral"
+  ],
+  "resume_length_mode": "realistic",
+  "seed": 0,
+  "max_examples": 0,
+  "salience_levels": [
+    "low"
+  ],
+  "explicitness_levels": [
+    "organization_name_only"
+  ],
+  "location_levels": [
+    "bottom_section",
+    "mid_resume",
+    "leadership_section"
+  ]
+}

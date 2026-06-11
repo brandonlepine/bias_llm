@@ -121,7 +121,7 @@ def figure_for_condition(pc, recs, units, fig_dir):
     by_qual = agg(recs, "qual")
     l1 = [r for r in recs if r["load"] == 1]
     by_chan = agg(l1, "channel") if l1 else {}
-    panels = [("by identity load", by_load, sorted(by_load, key=lambda k: (isinstance(k, str), k))),
+    panels = [("by identity load (= channel COUNT, NOT a dose)", by_load, sorted(by_load, key=lambda k: (isinstance(k, str), k))),
               ("by qualification profile", by_qual, None)]
     if by_chan:
         panels.append(("by signal channel (load 1)", by_chan, None))
@@ -212,6 +212,65 @@ def summary_heatmap(per_cond, fig_dir):
     return path
 
 
+
+
+FACTOR_KEY = {"explicitness": "identity_description_mode", "salience": "signal_salience_level", "location": "resume_location_level"}
+DOSE_ORDER = {"explicitness": ["organization_name_only", "identity_description_subtle", "identity_description_explicit", "strongly_explicit_identity"],
+              "salience": ["low", "moderate", "high", "leadership"],
+              "location": ["bottom_section", "mid_resume", "leadership_section", "experience_embedded"]}
+
+
+def _money(r):
+    return r.get("modal_offer_usd") if r.get("output_type") in ("salary_increment", "bonus_increment") else r.get("parsed_score")
+
+
+def dose_figure(rows, factor, fig_dir):
+    """Effect by a single dose factor (channel held fixed) per outcome, with floor band
+    and a monotonicity flag. Salary/bonus use the realistic $5k modal offer."""
+    key = FACTOR_KEY[factor]
+    pcs = sorted({r["prompt_condition_id"] for r in rows if r.get("output_type") != "pairwise_AB"})
+    if not pcs:
+        return None
+    fig, axes = plt.subplots(1, len(pcs), figsize=(4.2 * len(pcs), 4.6))
+    if len(pcs) == 1:
+        axes = [axes]
+    for ax, pc in zip(axes, pcs):
+        groups = collections.defaultdict(dict)
+        for r in rows:
+            if r["prompt_condition_id"] != pc or r.get("output_type") == "pairwise_AB":
+                continue
+            groups[r["paired_example_id"]][r["treatment_or_control"]] = r
+        bylevel, floorlevel = collections.defaultdict(list), collections.defaultdict(list)
+        for arms in groups.values():
+            if "control" not in arms or "treatment" not in arms:
+                continue
+            lv = arms["control"].get(key)
+            cv, tv = _money(arms["control"]), _money(arms["treatment"])
+            if cv is not None and tv is not None:
+                bylevel[lv].append(cv - tv)
+            if "neutral" in arms and _money(arms["neutral"]) is not None:
+                floorlevel[lv].append(cv - _money(arms["neutral"]))
+        levels = [l for l in DOSE_ORDER.get(factor, []) if l in bylevel] or sorted(bylevel, key=str)
+        means = [float(np.mean(bylevel[l])) for l in levels]
+        err = [1.96 * float(np.std(bylevel[l], ddof=1)) / np.sqrt(len(bylevel[l])) if len(bylevel[l]) > 1 else 0 for l in levels]
+        floor = float(np.mean([abs(np.mean(floorlevel[l])) for l in levels if floorlevel[l]])) if any(floorlevel.values()) else None
+        ax.bar(range(len(levels)), means, yerr=err, color="#1f77b4", edgecolor="black", capsize=3, zorder=3)
+        if floor:
+            ax.axhspan(-floor, floor, color="#999999", alpha=0.22, zorder=1, label=f"floor ±{floor:.3g}")
+        ax.axhline(0, color="black", linewidth=0.8, zorder=2)
+        ax.set_title(pc, fontsize=8)
+        ax.set_xticks(range(len(levels)))
+        ax.set_xticklabels([str(l).replace("identity_description_", "").replace("_", " ") for l in levels], rotation=30, ha="right", fontsize=7)
+        ax.set_ylabel("control − treatment", fontsize=8)
+        mono = len(levels) >= 3 and (all(x <= y for x, y in zip(means, means[1:])) or all(x >= y for x, y in zip(means, means[1:])))
+        ax.legend(fontsize=6, loc="best", title=("MONOTONIC dose-response" if mono else None))
+    fig.suptitle(f"{factor.upper()} dose (single affiliation signal; + = identity-signaled candidate penalized)", fontsize=11)
+    fig.subplots_adjust(left=0.06, right=0.98, top=0.85, bottom=0.30, wspace=0.35)  # NOT tight_layout
+    path = os.path.join(fig_dir, f"dose_{factor}.png")
+    fig.savefig(path, dpi=130); plt.close(fig)
+    return path
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--scored", required=True)
@@ -249,6 +308,10 @@ def main():
             print(f"     load {l}: Δ={st['mean']:+.4g} [{st['ci_lo']:+.4g},{st['ci_hi']:+.4g}] n={st['n']} {mark}")
 
     pw_path = pairwise_figure(rows, fig_dir)
+    for _f in ('explicitness', 'salience', 'location'):
+        if len({r.get(FACTOR_KEY[_f]) for r in rows if r.get('output_type') != 'pairwise_AB'}) > 1:
+            p_ = dose_figure(rows, _f, fig_dir)
+            if p_: print(f'dose figure ({_f}) -> {p_}')
     hm_path = summary_heatmap(per_cond, fig_dir)
     out = args.out or os.path.join(run_dir, "analysis_summary.json")
     json.dump(summary, open(out, "w"), indent=2)
