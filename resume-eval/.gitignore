@@ -16,3 +16,10 @@ __pycache__/
 # new_schemas benchmark run outputs (regenerable from configs)
 new_schemas/runs/
 __pycache__/
+
+# ingestion / factory outputs
+new_schemas/prodigy/*.jsonl
+new_schemas/job_descriptions/drafts/*
+!new_schemas/job_descriptions/drafts/.gitkeep
+new_schemas/qualification_profiles/generated/*
+!new_schemas/qualification_profiles/generated/.gitkeep

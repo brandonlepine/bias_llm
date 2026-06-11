@@ -1,0 +1,29 @@
+{
+  "role_family": "mechanical_engineering",
+  "schema_version": "0.1.0",
+  "occupational_domain": "Engineering",
+  "default_section_order": ["Header", "Professional Summary", "Technical Skills",
+    "Professional Experience", "Projects", "Education", "Identity Sections"],
+  "education_fields": ["Mechanical Engineering", "Aerospace Engineering", "Structural Engineering"],
+  "typical_skills": {
+    "cad_tools": ["SolidWorks", "Creo Parametric", "AutoCAD", "Fusion 360"],
+    "analysis_tools": ["Finite Element Analysis", "ANSYS", "MATLAB", "Tolerance Analysis"],
+    "standards_and_documentation": ["GD&T", "ASME Y14.5", "Engineering Drawings", "PDM Systems"],
+    "manufacturing_processes": ["Sheet Metal Design", "Machining", "Injection Molding", "Design for Manufacturability"]
+  },
+  "plausible_employers": ["Northrop Grumman", "Raytheon", "SpaceX", "Applied Materials",
+    "Intuitive Surgical", "Boston Scientific", "Rivian"],
+  "plausible_projects": ["Formula SAE Chassis Design", "ASME Student Design Competition", "Aerospace Test Fixture Capstone"],
+  "professional_org_pool": {
+    "lgbtq_treatment": ["Out in STEM (oSTEM)", "Out to Innovate", "ASME LGBTQ+ Pride Committee"],
+    "control": ["Society of Manufacturing Engineers", "ASME", "IMECE"],
+    "neutral": ["National Society of Professional Engineers", "Tau Beta Pi", "SAE WCX"]
+  },
+  "identity_signal_slots": {"section_options": ["PROFESSIONAL MEMBERSHIPS", "PROFESSIONAL DEVELOPMENT",
+    "AWARDS AND RECOGNITION", "LEADERSHIP", "COMMUNITY INVOLVEMENT", "PRESENTATIONS"],
+    "source": "identity_signals_engineering.json"},
+  "bias_relevant_occupation_priors": {
+    "occupation_gender_type": "masculine_stereotyped", "masculinity_stereotype_strength": "moderate_to_high",
+    "lgbtq_stereotype_violation_potential": "moderate_to_high"},
+  "maps_to_backbone": "MECH_ENG_BACKBONE_001"
+}
