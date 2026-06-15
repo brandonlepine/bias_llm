@@ -1,0 +1,90 @@
+# Organizational decision benchmarks
+
+**Conceptual claim:** this benchmark studies **identity-conditioned allocation of
+organizational resources, status, credibility, and opportunity under AI-mediated
+decision-making** — generalizing the hiring benchmark beyond selection-at-the-door.
+
+The hiring benchmark is unchanged. This layer adds new *decision domains* on top of
+the same identity factorial, paired design, deterministic readouts, noise floor, and
+diagnostics.
+
+## Why beyond hiring
+Hiring bias is one allocation decision. The same model mediates many others where
+identity may shift outcomes — often *more* subtly (e.g. as credibility discounting or
+"potential" skepticism rather than a competence score). Each domain measures a
+different organizational resource:
+
+| domain | resource at stake | status | what bias looks like |
+|---|---|---|---|
+| hiring_selection | offer / interview slot | entry | lower score / not chosen |
+| **promotion_advancement** | level / title | internal status | lower readiness / "not ready yet" / leadership skepticism |
+| opportunity_allocation | stretch / funding / mentorship / visibility | trajectory | not selected for scarce opportunity |
+| compensation_allocation | money / equity | material reward | lower allocation / below a real increment |
+| performance_evaluation | rating / narrative | reputation | lower rating / warmth-not-competence language |
+| trust_credibility | credibility / signoff authority | epistemic status | judgment discounted in disagreements |
+| discipline_accountability | sanction severity | penalty | harsher sanction for ambiguous issues |
+
+## How identity signals are reused
+The identity factorial (channel × salience × explicitness × professional-relevance ×
+location × load) is **surface-agnostic**. `identity_signal_surface` selects where the
+signal lives: `resume_section` (hiring), `employee_bio` (promotion/opportunity),
+`performance_review_history`, `project_history`, `professional_development_record`,
+`leadership_record`. Same `by_channel` triples, same dose configs.
+
+## Isolated scoring vs pairwise vs ranking/selection
+- **Isolated** (score_0_100 / yes-no): per-candidate; bias = paired control−treatment
+  delta vs the noise floor.
+- **Pairwise** (A/B): treatment vs matched control head-to-head; the raw A/B logit is
+  position-saturated, so use the **position-debiased** preference
+  `T=(logit_AB|treat=A − logit_AB|treat=B)/2`.
+- **Ranking / scarce selection** (choose K of N): bias = treatment vs control
+  **selection rate / odds ratio / mean rank / top-K rate**, with each candidate
+  **rotated through every position** to remove position bias. *(Readout is the next
+  increment — scenarios are scaffolded; see status below.)*
+
+## What's runnable now
+- **hiring_selection** — full (existing benchgen).
+- **promotion_advancement** — runnable: `orgbench/generate_promotion.py` renders
+  internal employee profiles + the identity factorial + promotion prompts, emitting
+  rows in the **same format**, so `run_eval` and `diagnostics` work unchanged.
+  Prompt conditions reuse the hiring readouts: `promotion_readiness_score_0_100`,
+  `leadership_potential_score_0_100`, `promote_yes_no`, `years_until_ready`.
+  Promotion lets identity effects show up in **leadership/potential** judgments, not
+  only technical competence.
+
+```bash
+python -m new_schemas.orgbench.generate_promotion --config new_schemas/experiments/promotion_pilot.json
+RUN=$(ls -td new_schemas/runs/*__promotion_pilot | head -1)
+python -m new_schemas.benchgen.run_eval    --run-dir "$RUN" --model meta-llama/Llama-3.1-8B-Instruct
+python -m new_schemas.benchgen.diagnostics --scored "$RUN/scored.jsonl"   # channel/dose/floor diagnostics, all reused
+python -m new_schemas.benchgen.analyze     --scored "$RUN/scored.jsonl"
+```
+
+## Staged next (scaffolded: schemas + scenarios exist, readout/generator pending)
+- **ranking/scarce-selection readout** (render N candidates, rotate positions, parse
+  selection/rank; metrics: selection rate, odds ratio, mean rank, top-K, position
+  bias) — powers `opportunity_allocation` and `rank_candidates_for_promotion`.
+- **opportunity_allocation** + **compensation_allocation** generators (compensation
+  reuses the discrete $-increment offer + exact-match-rate machinery; default
+  employee-bonus increment $500–$1,000, exec/tech $2,500–$5,000; never report
+  sub-increment EV as $ bias).
+- **performance_evaluation** text outputs + optional text-feature extraction (warmth /
+  competence / agency / certainty / hedging / leadership language).
+- **trust_credibility** and **discipline_accountability** — schemas present, marked
+  `implementation_status: placeholder` (discipline kept separate; sensitive).
+
+## Add a new scenario
+1. Add a domain to `decision_domains/decision_domains.json` (or reuse one).
+2. Add a template to `decision_scenarios/<name>.json` (scenario_id, decision_domain,
+   prompt_template, candidate_count, selection_count, outcome_schema, required_inputs,
+   evaluation_metrics, randomization_rules, counterbalancing_rules).
+3. For per-profile scoring, emit benchgen-format rows (see `generate_promotion.py`) and
+   reuse `run_eval`/`diagnostics`. For ranking/selection, use the (forthcoming) ranking
+   readout.
+
+## Interpreting effects
+Same hierarchy as hiring (`WHY_FACTORIAL.md`, factor-aware diagnostics): channel main
+effects vs interactions vs dose-response; monetary on the **actual increment** with
+exact-match rate; choice-forcing (pairwise/ranking) reveals preferences invisible in
+isolated scoring; always vs the per-outcome **noise floor**. Do not collapse to
+"identity load."

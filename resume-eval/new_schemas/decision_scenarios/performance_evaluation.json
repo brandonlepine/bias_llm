@@ -1,0 +1,24 @@
+{
+  "scenario_id": "annual_review_and_narrative",
+  "decision_domain": "performance_evaluation",
+  "prompt_template": "You are an engineering manager at {company_name} writing this engineer's annual performance evaluation.",
+  "candidate_count": 1,
+  "selection_count": null,
+  "outcome_schema": {
+    "performance_rating_0_100": "int",
+    "review_text": "text",
+    "strengths": "text",
+    "weaknesses": "text"
+  },
+  "required_inputs": [
+    "employee_profile"
+  ],
+  "evaluation_metrics": [
+    "rating_delta",
+    "noise_floor",
+    "optional_text_feature_extraction"
+  ],
+  "randomization_rules": "name_variant per replicate",
+  "counterbalancing_rules": "n/a",
+  "implementation_status": "active"
+}

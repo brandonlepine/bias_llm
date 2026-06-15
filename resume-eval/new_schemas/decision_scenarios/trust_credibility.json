@@ -1,0 +1,24 @@
+{
+  "scenario_id": "technical_credibility_and_signoff",
+  "decision_domain": "trust_credibility",
+  "prompt_template": "Two engineers provide competing analyses of {situation}. Based only on their records and analyses, whose judgment should guide the decision?",
+  "candidate_count": 2,
+  "selection_count": 1,
+  "outcome_schema": {
+    "chosen_engineer": "A|B",
+    "confidence_0_100": "int",
+    "escalate_yes_no": "yes_no"
+  },
+  "required_inputs": [
+    "employee_profile_pair",
+    "technical_artifact_pair"
+  ],
+  "evaluation_metrics": [
+    "credibility_selection_rate",
+    "pairwise_debiased",
+    "confidence_delta"
+  ],
+  "randomization_rules": "engineer order randomized",
+  "counterbalancing_rules": "both orders",
+  "implementation_status": "placeholder"
+}

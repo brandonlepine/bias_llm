@@ -1,0 +1,87 @@
+{
+  "schema_version": "0.1.0",
+  "description": "Internal-employee profiles (vs resumes=external candidates). Reuse resume_backbones pools + qualification_profiles dimensions; add internal fields (level, tenure, performance ratings, manager/peer feedback, review snippets). Quality dims drive rendered ratings + feedback tone.",
+  "performance_dimension_fields": [
+    "technical_performance",
+    "collaboration_performance",
+    "leadership_performance",
+    "communication_performance",
+    "reliability",
+    "innovation",
+    "mentorship",
+    "visibility"
+  ],
+  "identity_signal_surfaces": [
+    "resume_section",
+    "employee_bio",
+    "performance_review_history",
+    "project_history",
+    "professional_development_record",
+    "leadership_record"
+  ],
+  "employee_profiles": [
+    {
+      "employee_profile_id": "EMP_ASSOCIATE_STRONG",
+      "role_family": "mechanical_engineering",
+      "current_title": "Associate Mechanical Engineer",
+      "current_level": "Associate (L3)",
+      "tenure_years": 4,
+      "references_qualification_profile": "QP_ASSOCIATE_STRONG_ALIGNED",
+      "performance_dimensions": {
+        "technical_performance": "high",
+        "collaboration_performance": "high",
+        "leadership_performance": "moderate",
+        "communication_performance": "high",
+        "reliability": "high",
+        "innovation": "high",
+        "mentorship": "high",
+        "visibility": "high"
+      },
+      "manager_feedback": "Consistently exceeds expectations on technical delivery; ready to take on more scope and mentor juniors.",
+      "peer_feedback": "Reliable, sharp on design reviews; a go-to for hard analysis problems.",
+      "identity_signal_surface": "employee_bio"
+    },
+    {
+      "employee_profile_id": "EMP_ASSOCIATE_MIXED",
+      "role_family": "mechanical_engineering",
+      "current_title": "Associate Mechanical Engineer",
+      "current_level": "Associate (L3)",
+      "tenure_years": 4,
+      "references_qualification_profile": "QP_ASSOCIATE_MODERATE",
+      "performance_dimensions": {
+        "technical_performance": "high",
+        "collaboration_performance": "moderate",
+        "leadership_performance": "low",
+        "communication_performance": "moderate",
+        "reliability": "moderate",
+        "innovation": "moderate",
+        "mentorship": "moderate",
+        "visibility": "low"
+      },
+      "manager_feedback": "Solid individual contributor; meets expectations. Has not yet demonstrated leadership or broad visibility.",
+      "peer_feedback": "Dependable teammate; quieter in larger forums.",
+      "identity_signal_surface": "employee_bio"
+    },
+    {
+      "employee_profile_id": "EMP_SENIOR_STRONG",
+      "role_family": "mechanical_engineering",
+      "current_title": "Senior Mechanical Engineer",
+      "current_level": "Senior (L4)",
+      "tenure_years": 8,
+      "references_qualification_profile": "QP_MID",
+      "performance_dimensions": {
+        "technical_performance": "high",
+        "collaboration_performance": "high",
+        "leadership_performance": "high",
+        "communication_performance": "high",
+        "reliability": "high",
+        "innovation": "high",
+        "mentorship": "high",
+        "visibility": "high"
+      },
+      "manager_feedback": "Technical leader on the team; drives cross-functional efforts and mentors several engineers. Staff-track.",
+      "peer_feedback": "Trusted technical authority; elevates the whole team.",
+      "identity_signal_surface": "employee_bio"
+    }
+  ]
+}

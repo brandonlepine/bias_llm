@@ -1,0 +1,211 @@
+{
+  "schema_version": "0.1.0",
+  "conceptual_framing": "Identity-conditioned allocation of organizational resources, status, credibility, and opportunity under AI-mediated decision-making.",
+  "decision_domains": [
+    {
+      "decision_domain_id": "hiring_selection",
+      "decision_domain_name": "Hiring & selection",
+      "description": "Score/choose external candidates for a role.",
+      "decision_type": "selection",
+      "scarcity_level": "high",
+      "organizational_resource_at_stake": "job offer / interview slot",
+      "status_implication": "entry to organization",
+      "risk_level": "moderate",
+      "outcome_type": "score|binary|pairwise|rank",
+      "recommended_prompt_conditions": [
+        "next_round_score_0_100",
+        "offer_score_0_100",
+        "salary_offer_within_band",
+        "signing_bonus_yes_no",
+        "signing_bonus_amount",
+        "pairwise_candidate_choice"
+      ],
+      "required_profile_fields": [
+        "qualification_profile",
+        "resume_backbone"
+      ],
+      "optional_profile_fields": [
+        "name_variant"
+      ],
+      "bias_relevant_dimensions": [
+        "occupation_gender_type",
+        "lgbtq_stereotype_violation_potential"
+      ],
+      "implementation_status": "active"
+    },
+    {
+      "decision_domain_id": "promotion_advancement",
+      "decision_domain_name": "Promotion & advancement",
+      "description": "Advance internal employees to higher levels.",
+      "decision_type": "selection",
+      "scarcity_level": "high",
+      "organizational_resource_at_stake": "promotion / level / title",
+      "status_implication": "internal status gain",
+      "risk_level": "high",
+      "outcome_type": "score|binary|integer|pairwise|rank",
+      "recommended_prompt_conditions": [
+        "promotion_readiness_score_0_100",
+        "promote_yes_no",
+        "years_until_ready",
+        "leadership_potential_score_0_100",
+        "pairwise_promotion_choice",
+        "rank_candidates_for_promotion"
+      ],
+      "required_profile_fields": [
+        "employee_profile"
+      ],
+      "optional_profile_fields": [
+        "manager_feedback",
+        "peer_feedback"
+      ],
+      "bias_relevant_dimensions": [
+        "leadership_stereotype",
+        "potential_vs_performance",
+        "occupation_gender_type"
+      ],
+      "implementation_status": "active"
+    },
+    {
+      "decision_domain_id": "opportunity_allocation",
+      "decision_domain_name": "Opportunity allocation",
+      "description": "Allocate scarce developmental/visibility opportunities.",
+      "decision_type": "scarce_selection",
+      "scarcity_level": "very_high",
+      "organizational_resource_at_stake": "stretch assignment / funding / training / mentorship / visibility",
+      "status_implication": "career trajectory",
+      "risk_level": "moderate",
+      "outcome_type": "selection|rank|score",
+      "recommended_prompt_conditions": [
+        "select_one_for_high_visibility_project",
+        "select_two_for_conference_funding",
+        "select_one_for_leadership_training",
+        "assign_executive_mentor"
+      ],
+      "required_profile_fields": [
+        "employee_profile"
+      ],
+      "optional_profile_fields": [
+        "visibility_level",
+        "career_impact",
+        "leadership_signal_strength"
+      ],
+      "bias_relevant_dimensions": [
+        "leadership_stereotype",
+        "sponsorship_gap"
+      ],
+      "implementation_status": "active"
+    },
+    {
+      "decision_domain_id": "compensation_allocation",
+      "decision_domain_name": "Compensation allocation",
+      "description": "Allocate money/equity across employees.",
+      "decision_type": "allocation",
+      "scarcity_level": "high",
+      "organizational_resource_at_stake": "bonus pool / raise / equity",
+      "status_implication": "material reward",
+      "risk_level": "high",
+      "outcome_type": "amount|binary|increment",
+      "recommended_prompt_conditions": [
+        "bonus_pool_allocation",
+        "merit_raise_percent",
+        "equity_grant_yes_no",
+        "equity_grant_amount"
+      ],
+      "required_profile_fields": [
+        "employee_profile"
+      ],
+      "optional_profile_fields": [
+        "bonus_increment",
+        "raise_range",
+        "equity_pool"
+      ],
+      "bias_relevant_dimensions": [
+        "compensation_discounting"
+      ],
+      "implementation_status": "active"
+    },
+    {
+      "decision_domain_id": "performance_evaluation",
+      "decision_domain_name": "Performance evaluation",
+      "description": "Rate/narrate employee performance.",
+      "decision_type": "evaluation",
+      "scarcity_level": "none",
+      "organizational_resource_at_stake": "rating / review narrative",
+      "status_implication": "reputation",
+      "risk_level": "moderate",
+      "outcome_type": "score|text",
+      "recommended_prompt_conditions": [
+        "performance_rating_0_100",
+        "promotion_narrative_text",
+        "development_feedback_text",
+        "strengths_weaknesses_text"
+      ],
+      "required_profile_fields": [
+        "employee_profile"
+      ],
+      "optional_profile_fields": [
+        "review_period"
+      ],
+      "bias_relevant_dimensions": [
+        "warmth_vs_competence",
+        "agency_attribution",
+        "leadership_language"
+      ],
+      "implementation_status": "active"
+    },
+    {
+      "decision_domain_id": "trust_credibility",
+      "decision_domain_name": "Trust & credibility",
+      "description": "Whose technical judgment is credible / who signs off.",
+      "decision_type": "credibility",
+      "scarcity_level": "contextual",
+      "organizational_resource_at_stake": "credibility / authority",
+      "status_implication": "epistemic status",
+      "risk_level": "high",
+      "outcome_type": "selection|score|binary",
+      "recommended_prompt_conditions": [
+        "which_explanation_more_credible",
+        "whose_diagnosis_guides_next_steps",
+        "who_signs_off_production"
+      ],
+      "required_profile_fields": [
+        "employee_profile",
+        "technical_artifact"
+      ],
+      "optional_profile_fields": [
+        "risk_level"
+      ],
+      "bias_relevant_dimensions": [
+        "credibility_discounting",
+        "competence_stereotype"
+      ],
+      "implementation_status": "placeholder"
+    },
+    {
+      "decision_domain_id": "discipline_accountability",
+      "decision_domain_name": "Discipline & accountability",
+      "description": "Severity / sanction for ambiguous issues.",
+      "decision_type": "sanction",
+      "scarcity_level": "none",
+      "organizational_resource_at_stake": "sanction severity",
+      "status_implication": "penalty / removal",
+      "risk_level": "very_high",
+      "outcome_type": "ordinal|binary|text",
+      "recommended_prompt_conditions": [
+        "severity_rating_0_100",
+        "sanction_level_coaching_warning_pip_termination",
+        "escalate_to_hr_yes_no"
+      ],
+      "required_profile_fields": [
+        "employee_profile",
+        "incident_description"
+      ],
+      "optional_profile_fields": [],
+      "bias_relevant_dimensions": [
+        "punitiveness_bias",
+        "ambiguity_resolution"
+      ],
+      "implementation_status": "placeholder"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "experiment_id": "promotion_pilot",
+  "decision_domain": "promotion_advancement",
+  "org_name": "TechCorp",
+  "employee_profiles": ["EMP_ASSOCIATE_STRONG", "EMP_ASSOCIATE_MIXED"],
+  "identity_conditions": [
+    {"identity_signal_condition_id": "none", "identity_load": 0, "channels": []},
+    {"identity_signal_condition_id": "affiliation", "identity_load": 1, "channels": ["affiliation"]},
+    {"identity_signal_condition_id": "leadership", "identity_load": 1, "channels": ["leadership"]}
+  ],
+  "name_variants": ["NV_M_WHITE_01", "NV_F_WHITE_01", "NV_A_WHITE_01"],
+  "prompt_conditions": ["promotion_readiness_score_0_100", "leadership_potential_score_0_100", "promote_yes_no", "years_until_ready"],
+  "arms": ["treatment", "control", "neutral"],
+  "identity_description_mode": "organization_name_only",
+  "seed": 0
+}

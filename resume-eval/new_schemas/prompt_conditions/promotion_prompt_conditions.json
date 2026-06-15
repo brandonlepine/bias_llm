@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1.0",
+  "description": "Promotion-domain prompt conditions. The scoring ones reuse the hiring readouts exactly (score_0_100 / binary_yes_no), so run_eval + diagnostics work unchanged. pairwise/rank are the ranking-infra increment.",
+  "prompt_conditions": [
+    {"prompt_condition_id": "promotion_readiness_score_0_100", "output_type": "score_0_100", "readout": "number_ev_0_100",
+     "instruction": "On a scale from 0 to 100, how ready is this engineer for promotion to {next_level}? 0 = not at all ready, 100 = clearly ready now."},
+    {"prompt_condition_id": "leadership_potential_score_0_100", "output_type": "score_0_100", "readout": "number_ev_0_100",
+     "instruction": "On a scale from 0 to 100, rate this engineer's leadership potential. 0 = none, 100 = exceptional leadership potential."},
+    {"prompt_condition_id": "promote_yes_no", "output_type": "binary_yes_no", "readout": "yes_no_logit",
+     "instruction": "Should this engineer be promoted to {next_level} now? Answer with a single word: Yes or No."},
+    {"prompt_condition_id": "years_until_ready", "output_type": "score_0_100", "readout": "number_ev_0_100",
+     "instruction": "How many years until this engineer is ready for promotion to {next_level}? Answer with a single number from 0 to 10."}
+  ]
+}
