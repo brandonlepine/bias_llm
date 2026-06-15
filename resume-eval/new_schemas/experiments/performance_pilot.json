@@ -1,0 +1,11 @@
+{
+  "experiment_id": "performance_pilot", "decision_domain": "performance_evaluation", "org_name": "TechCorp",
+  "employee_profiles": ["EMP_ASSOCIATE_STRONG", "EMP_ASSOCIATE_MIXED"],
+  "identity_conditions": [
+    {"identity_signal_condition_id": "affiliation", "identity_load": 1, "channels": ["affiliation"]},
+    {"identity_signal_condition_id": "leadership", "identity_load": 1, "channels": ["leadership"]}
+  ],
+  "name_variants": ["NV_M_WHITE_01", "NV_F_WHITE_01", "NV_A_WHITE_01"],
+  "prompt_conditions": ["performance_rating_0_100", "review_text", "strengths_weaknesses_text"],
+  "arms": ["treatment", "control", "neutral"], "identity_description_mode": "organization_name_only", "seed": 0
+}

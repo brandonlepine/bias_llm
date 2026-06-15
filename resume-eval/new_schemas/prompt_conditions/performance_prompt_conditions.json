@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1.0",
+  "description": "Performance-evaluation conditions. Numeric rating reuses the deterministic score readout. Text outputs use GREEDY (deterministic) generation (output_type text_generation) + lexicon feature extraction (analyze_text). Text features are coarse proxies, not ground truth.",
+  "prompt_conditions": [
+    {"prompt_condition_id": "performance_rating_0_100", "output_type": "score_0_100", "readout": "number_ev_0_100",
+     "instruction": "On a scale from 0 to 100, rate this engineer's overall performance this review period. 0 = far below expectations, 100 = far exceeds expectations."},
+    {"prompt_condition_id": "review_text", "output_type": "text_generation", "readout": "greedy_generation",
+     "instruction": "Write a 3-4 sentence annual performance review for this engineer."},
+    {"prompt_condition_id": "strengths_weaknesses_text", "output_type": "text_generation", "readout": "greedy_generation",
+     "instruction": "Briefly summarize this engineer's top strengths and top areas for development."},
+    {"prompt_condition_id": "promotion_narrative_text", "output_type": "text_generation", "readout": "greedy_generation",
+     "instruction": "Write a short promotion-justification narrative for this engineer."}
+  ]
+}

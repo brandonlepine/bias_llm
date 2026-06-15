@@ -72,6 +72,7 @@ def main():
     ap.add_argument("--dtype", default="auto", choices=["auto", "float16", "bfloat16", "float32"])
     ap.add_argument("--out", default=None)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--max-new-tokens", type=int, default=200, help="for text_generation outputs")
     args = ap.parse_args()
 
     import torch
@@ -134,6 +135,22 @@ def main():
         return dict(parsed_score=p.get(focal_pos, 0.0), p_focal=p.get(focal_pos, 0.0),
                     chosen_position=chosen, chosen_is_focal=int(chosen == focal_pos),
                     focal_position=focal_pos, n_candidates=n, number_mass=mass, parse_success=bool(mass > 0.5))
+
+    def text_generate(system, user_body):
+        """Deterministic (greedy) free-text generation for review/narrative outputs."""
+        if is_chat:
+            enc = tok.apply_chat_template(
+                [{"role": "system", "content": system}, {"role": "user", "content": user_body}],
+                add_generation_prompt=True, return_tensors="pt", return_dict=True)
+        else:
+            enc = tok(system + "\n\n" + user_body + "\n", return_tensors="pt")
+        enc = {k: v.to(device) for k, v in enc.items()}
+        in_len = enc["input_ids"].shape[1]
+        with torch.no_grad():
+            out = model.generate(**enc, max_new_tokens=args.max_new_tokens, do_sample=False,
+                                 pad_token_id=tok.pad_token_id)
+        text = tok.decode(out[0, in_len:], skip_special_tokens=True).strip()
+        return dict(generated_text=text, n_gen_tokens=int(out.shape[1] - in_len), parse_success=bool(text))
 
     def logit_pair(system, user_body, pos_ids, neg_ids, scaffold="Answer:"):
         logits = last_logits(encode(tok, system, user_body, scaffold, False))
@@ -201,6 +218,8 @@ def main():
                 if not (lo <= usd <= hi):
                     print(f"  [clamp] {ex['paired_example_id']} {ot} {usd:.0f} outside [{lo},{hi}]")
                     rec["parsed_score"] = min(max(usd, lo), hi)
+            elif ot == "text_generation":
+                res = text_generate(system, ub); rec.update(**res)
             elif ot == "selection_n":
                 res = selection_readout(system, ub, ex["n_candidates"], ex["focal_position"]); nmass.append(res["number_mass"])
                 rec.update(**res)

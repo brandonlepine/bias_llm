@@ -91,15 +91,27 @@ python -m new_schemas.benchgen.run_eval    --run-dir "$RUN" --model meta-llama/L
 python -m new_schemas.benchgen.diagnostics --scored "$RUN/scored.jsonl"
 ```
 
+- **performance_evaluation** — runnable: `orgbench/generate_performance.py`. Numeric
+  `performance_rating_0_100` reuses the score readout (base or instruct). Text outputs
+  (`review_text`, `strengths_weaknesses_text`, `promotion_narrative_text`) use
+  **deterministic greedy generation** (output_type `text_generation`, `--max-new-tokens`)
+  — **Instruct only** (base Llama emits no text). `orgbench/analyze_text.py` extracts
+  lexicon features (warmth / competence / agency / certainty / hedging / risk /
+  leadership / technical_credibility) per 100 words and reports **paired control−treatment
+  deltas vs the control−neutral floor** (+ = treatment text has LESS of the feature; e.g.
+  warmth-up + competence-down = warmth-not-competence). Lexicon features are coarse proxies.
+
+```bash
+python -m new_schemas.orgbench.generate_performance --config new_schemas/experiments/performance_pilot.json
+RUN=$(ls -td new_schemas/runs/*__performance_pilot | head -1)
+python -m new_schemas.benchgen.run_eval    --run-dir "$RUN" --model meta-llama/Llama-3.1-8B-Instruct --max-new-tokens 220
+python -m new_schemas.benchgen.diagnostics --scored "$RUN/scored.jsonl"   # numeric rating
+python -m new_schemas.orgbench.analyze_text --scored "$RUN/scored.jsonl"  # text features
+```
+
 ## Staged next
 - **full ranking** (order all N / select K>1) extends the selection readout (parse a
-  ranked list); selection (K=1) is done.
-- **opportunity_allocation** + **compensation_allocation** generators (compensation
-  reuses the discrete $-increment offer + exact-match-rate machinery; default
-  employee-bonus increment $500–$1,000, exec/tech $2,500–$5,000; never report
-  sub-increment EV as $ bias).
-- **performance_evaluation** text outputs + optional text-feature extraction (warmth /
-  competence / agency / certainty / hedging / leadership language).
+  ranked list); scarce selection (K=1) is done.
 - **trust_credibility** and **discipline_accountability** — schemas present, marked
   `implementation_status: placeholder` (discipline kept separate; sensitive).
 
