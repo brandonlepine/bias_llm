@@ -38,9 +38,8 @@ signal lives: `resume_section` (hiring), `employee_bio` (promotion/opportunity),
   position-saturated, so use the **position-debiased** preference
   `T=(logit_AB|treat=A − logit_AB|treat=B)/2`.
 - **Ranking / scarce selection** (choose K of N): bias = treatment vs control
-  **selection rate / odds ratio / mean rank / top-K rate**, with each candidate
-  **rotated through every position** to remove position bias. *(Readout is the next
-  increment — scenarios are scaffolded; see status below.)*
+  **selection rate / odds ratio / position-adjusted preference**, with the focal
+  candidate **rotated through every position** to remove position bias (runnable; K=1).
 
 ## What's runnable now
 - **hiring_selection** — full (existing benchgen).
@@ -76,7 +75,7 @@ python -m new_schemas.benchgen.run_eval          --run-dir "$RUN" --model meta-l
 python -m new_schemas.orgbench.analyze_selection --scored "$RUN/scored.jsonl"
 ```
 
-## Staged next (scaffolded: schemas + scenarios exist, readout/generator pending)
+## More runnable domains
 - **compensation_allocation** — runnable: `orgbench/generate_compensation.py` renders
   per-employee bonus / merit-raise / equity decisions over DISCRETE realistic increments
   (bonus $1k, raise 1%, equity 250 shares; output_type bonus_increment) + equity yes/no
