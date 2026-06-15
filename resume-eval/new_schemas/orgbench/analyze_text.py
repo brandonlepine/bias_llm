@@ -53,29 +53,38 @@ def main():
         key = (r["prompt_condition_id"], r["identity_signal_condition_id"], r["paired_example_id"])
         g[key][r["treatment_or_control"]] = features(r.get("generated_text", ""))
 
-    by = collections.defaultdict(lambda: collections.defaultdict(lambda: {"ct": [], "cn": []}))
+    by = collections.defaultdict(lambda: collections.defaultdict(lambda: {"ct": [], "cn": [], "cvals": []}))
     for (pc, cond, _), arms in g.items():
         if "control" not in arms or "treatment" not in arms:
             continue
         for feat in LEXICONS:
             by[(pc, cond)][feat]["ct"].append(arms["control"][feat] - arms["treatment"][feat])
+            by[(pc, cond)][feat]["cvals"].append(arms["control"][feat])      # identity-absent values (name-replicate spread)
             if "neutral" in arms:
                 by[(pc, cond)][feat]["cn"].append(arms["control"][feat] - arms["neutral"][feat])
     rng = np.random.default_rng(0)
+    print("test = paired bootstrap CI of Δ excluding 0 (*SIG); floor = max(neutral-swap, name-replicate spread);")
+    print("*OUT = SIG and |Δ| beyond floor. floor≈0 just means neutral/name swaps don't move the text.\n")
     for (pc, cond) in sorted(by):
         print(f"[{pc} | {cond}]  (control − treatment, per 100 words)")
         for feat in LEXICONS:
-            ct = np.array(by[(pc, cond)][feat]["ct"]); cn = np.array(by[(pc, cond)][feat]["cn"])
+            d = by[(pc, cond)][feat]
+            ct = np.array(d["ct"]); cn = np.array(d["cn"]); cv = np.array(d["cvals"])
             if len(ct) == 0:
                 continue
-            m = ct.mean()
-            ci = (np.percentile([rng.choice(ct, len(ct)).mean() for _ in range(1000)], [2.5, 97.5]) if len(ct) > 1 else (m, m))
-            floor = (np.percentile(np.abs([rng.choice(cn, len(cn)).mean() for _ in range(1000)]), 97.5) if len(cn) > 1 else float("nan"))
-            out = "" if (floor != floor) else ("  *OUT" if abs(m) > floor else "")
-            print(f"    {feat:<22} Δ={m:+6.2f} [{ci[0]:+.2f},{ci[1]:+.2f}] floor=±{floor:.2f}{out}")
+            m = float(ct.mean())
+            ci = (np.percentile([rng.choice(ct, len(ct)).mean() for _ in range(2000)], [2.5, 97.5])
+                  if len(ct) > 1 else np.array([m, m]))
+            sig = (ci[0] > 0) or (ci[1] < 0)                                  # delta CI excludes 0 (robust to floor=0)
+            floor_neutral = (np.percentile(np.abs([rng.choice(cn, len(cn)).mean() for _ in range(2000)]), 97.5)
+                             if len(cn) > 1 else 0.0)
+            floor_name = 1.96 * float(cv.std(ddof=1)) if len(cv) > 1 else 0.0  # identity-irrelevant text variation
+            floor = max(floor_neutral, floor_name)
+            flag = (" *OUT" if (sig and abs(m) > floor) else (" *SIG" if sig else ""))
+            print(f"    {feat:<22} Δ={m:+6.2f} 95%CI=[{ci[0]:+.2f},{ci[1]:+.2f}] floor=±{floor:.2f}{flag}")
         print()
-    print("NOTE: lexicon proxies are coarse; treat as hypotheses (e.g. warmth-up + competence-down = "
-          "warmth-not-competence pattern). Confirm with held-out text + the numeric rating.")
+    print("NOTE: lexicon proxies are coarse; treat as hypotheses (warmth-up + competence-down = "
+          "warmth-not-competence). *SIG = real text shift; *OUT = also beyond identity-irrelevant noise.")
 
 
 if __name__ == "__main__":
