@@ -179,7 +179,7 @@
         "credibility_discounting",
         "competence_stereotype"
       ],
-      "implementation_status": "placeholder"
+      "implementation_status": "active"
     },
     {
       "decision_domain_id": "discipline_accountability",

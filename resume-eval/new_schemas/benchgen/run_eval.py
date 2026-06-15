@@ -218,6 +218,11 @@ def main():
                 if not (lo <= usd <= hi):
                     print(f"  [clamp] {ex['paired_example_id']} {ot} {usd:.0f} outside [{lo},{hi}]")
                     rec["parsed_score"] = min(max(usd, lo), hi)
+            elif ot == "pairwise_direct":
+                ld, pA = logit_pair(system, ub, a_ids, b_ids, scaffold="Answer:")
+                fp = ex["focal_position"]; chosen = "A" if ld > 0 else "B"
+                rec.update(parsed_score=ld, logit_A_minus_logit_B=ld, p_A=pA, chosen_candidate=chosen,
+                           focal_position=fp, chosen_is_focal=int(chosen == fp), parse_success=True)
             elif ot == "text_generation":
                 res = text_generate(system, ub); rec.update(**res)
             elif ot == "selection_n":

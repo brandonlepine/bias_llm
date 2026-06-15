@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1.0",
+  "description": "Symmetric competing-analysis scenarios for trust_credibility. The two analyses are equally plausible; the focal engineer is always assigned analysis_1 and the comparator analysis_2 (held fixed), so the arm delta (focal treatment - control) isolates the identity effect on judged credibility from analysis-preference and position.",
+  "technical_artifacts": [
+    {"artifact_id": "root_cause_disagreement", "situation": "the root cause of a production-line assembly failure",
+     "analysis_1": "The failure was caused by inconsistent fastener torque; tightening the torque spec and adding verification will prevent recurrence.",
+     "analysis_2": "The failure was caused by material fatigue in the mounting bracket; a material upgrade and revised load rating will prevent recurrence."},
+    {"artifact_id": "anomaly_investigation", "situation": "a thermal anomaly observed during qualification testing",
+     "analysis_1": "The anomaly reflects a sensor calibration error; recalibrating and re-running the test will resolve it.",
+     "analysis_2": "The anomaly reflects a real thermal margin shortfall; a design change to improve heat dissipation is required."},
+    {"artifact_id": "signoff_readiness", "situation": "whether the design is ready for production release",
+     "analysis_1": "The remaining risks are minor and well-mitigated; the design is ready to sign off for release now.",
+     "analysis_2": "Two open risks are not yet closed; release should wait until additional verification is complete."}
+  ]
+}

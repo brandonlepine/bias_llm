@@ -109,11 +109,27 @@ python -m new_schemas.benchgen.diagnostics --scored "$RUN/scored.jsonl"   # nume
 python -m new_schemas.orgbench.analyze_text --scored "$RUN/scored.jsonl"  # text features
 ```
 
+- **trust_credibility** — runnable: `orgbench/generate_trust.py`. Two equally-qualified
+  engineers give competing (symmetric) analyses of a `technical_artifact`; the FOCAL
+  engineer carries the identity signal; both orders (focal=A/B). `run_eval` (output_type
+  `pairwise_direct`) reads logit(A)−logit(B); `orgbench/analyze_trust.py` reports the
+  POSITION-DEBIASED focal credibility preference `T=(logit_AB|focal=A − focal=B)/2` and
+  the identity effect (treat−control) vs the control−neutral floor. **Negative = the
+  identity engineer's judgment is DISCOUNTED** — bias as credibility discounting, not a
+  lower score.
+
+```bash
+python -m new_schemas.orgbench.generate_trust --config new_schemas/experiments/trust_pilot.json
+RUN=$(ls -td new_schemas/runs/*__trust_pilot | head -1)
+python -m new_schemas.benchgen.run_eval     --run-dir "$RUN" --model meta-llama/Llama-3.1-8B-Instruct
+python -m new_schemas.orgbench.analyze_trust --scored "$RUN/scored.jsonl"
+```
+
 ## Staged next
 - **full ranking** (order all N / select K>1) extends the selection readout (parse a
   ranked list); scarce selection (K=1) is done.
-- **trust_credibility** and **discipline_accountability** — schemas present, marked
-  `implementation_status: placeholder` (discipline kept separate; sensitive).
+- **discipline_accountability** — schema present, `implementation_status: placeholder`
+  (kept separate; sensitive).
 
 ## Add a new scenario
 1. Add a domain to `decision_domains/decision_domains.json` (or reuse one).

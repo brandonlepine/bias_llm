@@ -1,0 +1,11 @@
+{
+  "experiment_id": "trust_pilot", "scenario_id": "credibility_choice", "decision_domain": "trust_credibility",
+  "org_name": "TechCorp", "employee_profile": "EMP_SENIOR_STRONG",
+  "focal_name": "NV_M_WHITE_01", "comparator_name": "NV_M_WHITE_02",
+  "technical_artifacts": ["root_cause_disagreement", "anomaly_investigation", "signoff_readiness"],
+  "identity_conditions": [
+    {"identity_signal_condition_id": "affiliation", "identity_load": 1, "channels": ["affiliation"]},
+    {"identity_signal_condition_id": "leadership", "identity_load": 1, "channels": ["leadership"]}
+  ],
+  "arms": ["treatment", "control", "neutral"], "identity_description_mode": "organization_name_only", "seed": 0
+}
