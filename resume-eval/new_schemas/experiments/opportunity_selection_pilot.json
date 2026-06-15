@@ -1,0 +1,16 @@
+{
+  "experiment_id": "opportunity_selection_pilot",
+  "scenario_id": "opportunity_scarce_selection",
+  "decision_domain": "opportunity_allocation",
+  "org_name": "TechCorp",
+  "n_candidates": 6,
+  "selection_instruction": "choose ONE engineer to lead a high-visibility cross-functional project",
+  "employee_profiles": ["EMP_ASSOCIATE_STRONG"],
+  "identity_conditions": [
+    {"identity_signal_condition_id": "affiliation", "identity_load": 1, "channels": ["affiliation"]},
+    {"identity_signal_condition_id": "leadership",  "identity_load": 1, "channels": ["leadership"]}
+  ],
+  "slate_names": ["NV_M_WHITE_01", "NV_M_WHITE_02", "NV_F_WHITE_01", "NV_F_WHITE_02", "NV_A_WHITE_01", "NV_A_WHITE_02"],
+  "arms": ["treatment", "control", "neutral"],
+  "identity_description_mode": "organization_name_only", "seed": 0
+}

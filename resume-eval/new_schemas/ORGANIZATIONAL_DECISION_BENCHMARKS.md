@@ -60,10 +60,25 @@ python -m new_schemas.benchgen.diagnostics --scored "$RUN/scored.jsonl"   # chan
 python -m new_schemas.benchgen.analyze     --scored "$RUN/scored.jsonl"
 ```
 
+- **opportunity_allocation / scarce selection** — runnable: `orgbench/generate_selection.py`
+  builds slates of N equally-qualified candidates with ONE focal candidate carrying the
+  identity signal, ROTATED through every position; `run_eval` (output_type `selection_n`)
+  reads the choice distribution over candidate numbers; `orgbench/analyze_selection.py`
+  reports focal selection rate by variant, odds ratio, **position-adjusted preference**
+  (paired same-position Δp_focal vs the control-neutral floor), and a **position-bias**
+  table. Position bias is strong, which is why the focal is counterbalanced across all
+  positions and the paired Δ cancels it.
+
+```bash
+python -m new_schemas.orgbench.generate_selection --config new_schemas/experiments/opportunity_selection_pilot.json
+RUN=$(ls -td new_schemas/runs/*__opportunity_selection_pilot | head -1)
+python -m new_schemas.benchgen.run_eval          --run-dir "$RUN" --model meta-llama/Llama-3.1-8B-Instruct
+python -m new_schemas.orgbench.analyze_selection --scored "$RUN/scored.jsonl"
+```
+
 ## Staged next (scaffolded: schemas + scenarios exist, readout/generator pending)
-- **ranking/scarce-selection readout** (render N candidates, rotate positions, parse
-  selection/rank; metrics: selection rate, odds ratio, mean rank, top-K, position
-  bias) — powers `opportunity_allocation` and `rank_candidates_for_promotion`.
+- **full ranking** (order all N / select K>1) extends the selection readout (parse a
+  ranked list); selection (K=1) is done.
 - **opportunity_allocation** + **compensation_allocation** generators (compensation
   reuses the discrete $-increment offer + exact-match-rate machinery; default
   employee-bonus increment $500–$1,000, exec/tech $2,500–$5,000; never report

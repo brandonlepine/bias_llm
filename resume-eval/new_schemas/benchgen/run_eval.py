@@ -123,6 +123,18 @@ def main():
                     band_low=levels[0], band_high=levels[-1], band_width=levels[-1] - levels[0],
                     number_mass=mass, parse_success=bool(mass > 0.5))
 
+    def selection_readout(system, user_body, n, focal_pos):
+        """Choose 1 of N: distribution over candidate-number tokens 1..N -> focal selection prob."""
+        logits = last_logits(encode(tok, system, user_body, "Answer:", True))
+        probs = torch.softmax(logits, -1)
+        pos_ids = {i: number_ids[i] for i in range(1, n + 1) if i in number_ids}
+        mass = sum(probs[j].item() for j in pos_ids.values())
+        p = {i: probs[j].item() / max(mass, 1e-9) for i, j in pos_ids.items()}
+        chosen = max(p, key=p.get) if p else 0
+        return dict(parsed_score=p.get(focal_pos, 0.0), p_focal=p.get(focal_pos, 0.0),
+                    chosen_position=chosen, chosen_is_focal=int(chosen == focal_pos),
+                    focal_position=focal_pos, n_candidates=n, number_mass=mass, parse_success=bool(mass > 0.5))
+
     def logit_pair(system, user_body, pos_ids, neg_ids, scaffold="Answer:"):
         logits = last_logits(encode(tok, system, user_body, scaffold, False))
         p = torch.logsumexp(logits[torch.tensor(pos_ids)], 0).item()
@@ -161,7 +173,7 @@ def main():
                    "resume_location_level", "professional_relevance_level", "candidate_relative_to_job",
                    "offer_increment", "channel_affiliation_present", "channel_conference_present",
                    "channel_scholarship_present", "channel_leadership_present", "channel_volunteer_present",
-                   "channel_presentation_present")}
+                   "channel_presentation_present", "employee_profile_id", "decision_domain", "focal_name_variant_id")}
             system, ub = ex["job_system_prompt"], user_body_of(ex)
             if ot == "score_0_100":
                 ev, am, mass = number_ev(system, ub)
@@ -189,6 +201,9 @@ def main():
                 if not (lo <= usd <= hi):
                     print(f"  [clamp] {ex['paired_example_id']} {ot} {usd:.0f} outside [{lo},{hi}]")
                     rec["parsed_score"] = min(max(usd, lo), hi)
+            elif ot == "selection_n":
+                res = selection_readout(system, ub, ex["n_candidates"], ex["focal_position"]); nmass.append(res["number_mass"])
+                rec.update(**res)
             elif ot in ("salary_increment", "bonus_increment"):
                 res = increment_readout(system, ub, ex["offer_levels"]); nmass.append(res["number_mass"])
                 rec.update(**res)
