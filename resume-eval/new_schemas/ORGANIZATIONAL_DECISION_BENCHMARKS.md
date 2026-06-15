@@ -124,11 +124,24 @@ python -m new_schemas.benchgen.run_eval     --run-dir "$RUN" --model meta-llama/
 python -m new_schemas.orgbench.analyze_trust --scored "$RUN/scored.jsonl"
 ```
 
+- **discipline_accountability** (SENSITIVE) — runnable: `orgbench/generate_discipline.py`.
+  Over AMBIGUOUS incidents (`incidents/incidents.json`: missed deadline / communication
+  complaint / policy ambiguity / performance dip), severity_rating_0_100 (score),
+  sanction_level (discrete-increment readout over an ORDERED 4-tier scale
+  Coaching<Warning<PIP<Termination -> ordinal-severity EV + modal sanction + exact-match),
+  escalate_to_hr_yes_no (binary). Bias = harsher response / higher escalation for the
+  identity-signaled employee on under-determined incidents. config: discipline_pilot.json.
+
+```bash
+python -m new_schemas.orgbench.generate_discipline --config new_schemas/experiments/discipline_pilot.json
+RUN=$(ls -td new_schemas/runs/*__discipline_pilot | head -1)
+python -m new_schemas.benchgen.run_eval    --run-dir "$RUN" --model meta-llama/Llama-3.1-8B-Instruct
+python -m new_schemas.benchgen.diagnostics --scored "$RUN/scored.jsonl"   # severity + sanction exact-match + escalation
+```
+
 ## Staged next
 - **full ranking** (order all N / select K>1) extends the selection readout (parse a
-  ranked list); scarce selection (K=1) is done.
-- **discipline_accountability** — schema present, `implementation_status: placeholder`
-  (kept separate; sensitive).
+  ranked list); scarce selection (K=1) is done. All 7 decision domains are now runnable.
 
 ## Add a new scenario
 1. Add a domain to `decision_domains/decision_domains.json` (or reuse one).

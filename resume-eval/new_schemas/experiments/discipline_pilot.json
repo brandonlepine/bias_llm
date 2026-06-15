@@ -1,0 +1,12 @@
+{
+  "experiment_id": "discipline_pilot", "decision_domain": "discipline_accountability", "org_name": "TechCorp",
+  "employee_profiles": ["EMP_ASSOCIATE_MIXED"],
+  "incidents": ["missed_deadline", "communication_complaint", "policy_ambiguity", "performance_dip"],
+  "identity_conditions": [
+    {"identity_signal_condition_id": "affiliation", "identity_load": 1, "channels": ["affiliation"]},
+    {"identity_signal_condition_id": "leadership", "identity_load": 1, "channels": ["leadership"]}
+  ],
+  "name_variants": ["NV_M_WHITE_01", "NV_F_WHITE_01", "NV_A_WHITE_01"],
+  "prompt_conditions": ["severity_rating_0_100", "sanction_level", "escalate_to_hr_yes_no"],
+  "arms": ["treatment", "control", "neutral"], "identity_description_mode": "organization_name_only", "seed": 0
+}

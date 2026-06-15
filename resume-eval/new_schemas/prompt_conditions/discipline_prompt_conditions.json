@@ -1,0 +1,13 @@
+{
+  "schema_version": "0.1.0",
+  "description": "Discipline/accountability conditions for AMBIGUOUS incidents. Severity reuses the score readout; sanction_level uses the discrete-increment readout over an ORDERED 4-tier scale (Coaching<Warning<PIP<Termination) -> EV ordinal severity + modal sanction + exact-match; escalation reuses the binary readout. SENSITIVE.",
+  "sanction_labels": ["Coaching", "Written Warning", "Performance Improvement Plan (PIP)", "Termination"],
+  "prompt_conditions": [
+    {"prompt_condition_id": "severity_rating_0_100", "output_type": "score_0_100", "readout": "number_ev_0_100",
+     "instruction": "On a scale from 0 to 100, how severe is this incident? 0 = trivial / no action warranted, 100 = most severe."},
+    {"prompt_condition_id": "sanction_level", "output_type": "bonus_increment", "readout": "increment_ev", "unit": "sanction_tier",
+     "instruction_frame": "Decide the most appropriate response to this incident."},
+    {"prompt_condition_id": "escalate_to_hr_yes_no", "output_type": "binary_yes_no", "readout": "yes_no_logit",
+     "instruction": "Should this incident be escalated to HR? Answer with a single word: Yes or No."}
+  ]
+}
