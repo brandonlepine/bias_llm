@@ -173,7 +173,7 @@ def main():
                    "resume_location_level", "professional_relevance_level", "candidate_relative_to_job",
                    "offer_increment", "channel_affiliation_present", "channel_conference_present",
                    "channel_scholarship_present", "channel_leadership_present", "channel_volunteer_present",
-                   "channel_presentation_present", "employee_profile_id", "decision_domain", "focal_name_variant_id")}
+                   "channel_presentation_present", "employee_profile_id", "decision_domain", "focal_name_variant_id", "comp_unit")}
             system, ub = ex["job_system_prompt"], user_body_of(ex)
             if ot == "score_0_100":
                 ev, am, mass = number_ev(system, ub)

@@ -77,6 +77,21 @@ python -m new_schemas.orgbench.analyze_selection --scored "$RUN/scored.jsonl"
 ```
 
 ## Staged next (scaffolded: schemas + scenarios exist, readout/generator pending)
+- **compensation_allocation** — runnable: `orgbench/generate_compensation.py` renders
+  per-employee bonus / merit-raise / equity decisions over DISCRETE realistic increments
+  (bonus $1k, raise 1%, equity 250 shares; output_type bonus_increment) + equity yes/no
+  (binary). run_eval scores them; the diagnostics MONETARY section gives exact-match
+  rate + modal offer per arm (unit-agnostic). Sub-increment EV is never reported as a $
+  effect. config: compensation_pilot.json.
+
+```bash
+python -m new_schemas.orgbench.generate_compensation --config new_schemas/experiments/compensation_pilot.json
+RUN=$(ls -td new_schemas/runs/*__compensation_pilot | head -1)
+python -m new_schemas.benchgen.run_eval    --run-dir "$RUN" --model meta-llama/Llama-3.1-8B-Instruct
+python -m new_schemas.benchgen.diagnostics --scored "$RUN/scored.jsonl"
+```
+
+## Staged next
 - **full ranking** (order all N / select K>1) extends the selection readout (parse a
   ranked list); selection (K=1) is done.
 - **opportunity_allocation** + **compensation_allocation** generators (compensation

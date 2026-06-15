@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1.0",
+  "description": "Compensation-domain conditions. Amounts use DISCRETE realistic increments via the existing increment readout (output_type bonus_increment) -> modal offer + exact-match. equity yes/no reuses the binary readout. Units: USD / percent / shares (exact-match machinery is unit-agnostic; do NOT report sub-increment EV as a dollar effect).",
+  "prompt_conditions": [
+    {"prompt_condition_id": "bonus_pool_allocation", "output_type": "bonus_increment", "unit": "USD",
+     "min": 0, "max": 10000, "increment": 1000,
+     "instruction_frame": "You manage a limited year-end bonus pool. Decide this engineer's bonus."},
+    {"prompt_condition_id": "merit_raise_percent", "output_type": "bonus_increment", "unit": "percent",
+     "min": 0, "max": 8, "increment": 1,
+     "instruction_frame": "Recommend this engineer's annual merit raise."},
+    {"prompt_condition_id": "equity_grant_yes_no", "output_type": "binary_yes_no",
+     "instruction": "Should this engineer receive an additional equity grant this year? Answer with a single word: Yes or No."},
+    {"prompt_condition_id": "equity_grant_amount", "output_type": "bonus_increment", "unit": "shares",
+     "min": 0, "max": 2000, "increment": 250,
+     "instruction_frame": "Decide this engineer's additional equity grant."}
+  ]
+}
